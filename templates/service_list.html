@@ -18,12 +18,13 @@
     <div class="search-section">
         <div class="container">
             <form action="/" method="GET" class="search-form">
-                <input type="text" name="q" class="search-input" value="{{ .SearchQuery }}">
+                <!-- ИЗМЕНЕНО: name="q" стало name="мастерская" -->
+                <input type="text" name="мастерская" class="search-input" value="{{ .SearchQuery }}">
                 <button type="submit" class="search-button"></button>
             </form>
 
-            <!-- ВНУТРИ ССЫЛКИ ТЕПЕРЬ ЕСТЬ ИКОНКА И SPAN С КОЛИЧЕСТВОМ -->
-            <a href="/application/{{ .Application.ID }}" class="cart-link">
+            <!-- ИЗМЕНЕНО: ссылка теперь ведет на /мастерская/ -->
+            <a href="/мастерская/{{ .Application.ID }}" class="cart-link">
                 <img src="/resources/img/cart.png" alt="Корзина">
                 <span class="cart-count">{{ len .Application.Items }}</span>
             </a>

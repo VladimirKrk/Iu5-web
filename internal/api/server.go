@@ -21,14 +21,13 @@ func StartServer() {
 	r := gin.Default()
 	r.LoadHTMLGlob("templates/*")
 
-	// ВАЖНО: Настраиваем раздачу статики из вашей папки 'resources'
-	// URL будет /resources/styles/style.css
 	r.Static("/resources", "./resources")
 
-	// Настраиваем роуты для вашей лабы
+	// Настраиваем роуты
 	r.GET("/", handler.ServiceListHandler)
 	r.GET("/service/:id", handler.ServiceDetailHandler)
-	r.GET("/application/:id", handler.ApplicationDetailHandler)
+	// ИЗМЕНЕНО: /application/:id стало /мастерская/:id
+	r.GET("/мастерская/:id", handler.ApplicationDetailHandler)
 
 	r.Run()
 	log.Println("Server down")

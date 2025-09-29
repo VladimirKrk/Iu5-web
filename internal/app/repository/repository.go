@@ -21,6 +21,7 @@ type Service struct {
 
 // remove extra fields, everything else will be added
 // from the previous struct
+// here i only need id, and many-many fields
 type ApplicationItem struct {
 	ServiceID       int
 	FoundDefects    int

@@ -19,7 +19,7 @@ func NewHandler(r *repository.Repository) *Handler {
 
 // Обработчик для главной страницы со списком услуг
 func (h *Handler) ServiceListHandler(ctx *gin.Context) {
-	searchQuery := ctx.Query("q") // Используем "q" как в методичке
+	searchQuery := ctx.Query("мастерская") // Используем "q" как в методичке
 	var services []repository.Service
 	var err error
 

@@ -1,0 +1,45 @@
+# Версия синтаксиса Docker Compose
+version: '3.8'
+
+# Здесь мы описываем все наши сервисы (в данном случае только один - Minio)
+services:
+  minio:
+    # Используем официальный образ Minio из Docker Hub
+    image: minio/minio:latest
+
+    # Даем нашему контейнеру понятное имя
+    container_name: minio_server
+
+    # Пробрасываем порты из контейнера на наш компьютер
+    ports:
+      # 9000: Порт для API, по которому Go-приложение будет формировать URL картинок
+      - "9000:9000"
+      # 9001: Порт для удобного веб-интерфейса управления файлами
+      - "9001:9001"
+
+    # Задаем переменные окружения для конфигурации Minio
+    environment:
+      # Логин и пароль для доступа. ВАЖНО: не используйте их в реальных проектах!
+      - MINIO_ROOT_USER=root
+      - MINIO_ROOT_PASSWORD=rootroot
+
+    # Настраиваем постоянное хранилище, чтобы файлы не пропадали после перезапуска
+    volumes:
+      # Связываем папку ./minio-data в нашем проекте с папкой /data внутри контейнера
+      - ./minio-data:/data
+
+    # Команда, которая будет выполнена при старте контейнера
+    # Запускает сервер, указывает хранить данные в /data и включает веб-консоль на порту 9001
+    command: server /data --console-address ":9001"
+
+    # (Опционально, но хорошая практика) Создаем общую сеть для наших сервисов
+    networks:
+      - lab1-net
+
+# Определяем сеть
+networks:
+  lab1-net:
+    driver: bridge
+
+#docker run -it --rm --network=host --entrypoint /bin/sh minio/mc -c "mc alias set myminio http://127.0.0.1:9000 root rootroot && mc policy set download myminio/vlk-images"
+#docker run -it --rm --network=host --entrypoint /bin/sh minio/mc -c "mc alias set myminio http://127.0.0.1:9000 root rootroot && mc anonymous set download myminio/vlk-images"

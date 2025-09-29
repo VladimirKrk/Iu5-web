@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Заявка №{{ .ID }}</title>
+    <link rel="stylesheet" href="/resources/styles/application_style.css">
+</head>
+<body>
+
+    <header class="header">
+        <div class="container header-container">
+            <a href="/" class="logo">
+                <img src="/resources/img/logo.png" alt="VLK Logo">
+            </a>
+        </div>
+    </header>
+
+    <main class="main">
+        <div class="container">
+            
+            <div class="filter-bar">
+                <label>Введите название мастерской</label>
+                <div class="filter-input">
+                    <span>Илья и сыновья</span>
+                </div>
+            </div>
+
+            <!-- ИЗМЕНЕНИЯ ВНЕСЕНЫ ЗДЕСЬ -->
+            <div class="application-header">
+                <div class="header-label">введите количество найденного брака</div>
+                <div class="header-label">прогнозируемый объем выпуска в год</div>
+            </div>
+
+            <div class="cart-items-wrapper">
+                {{ range .Items }}
+                <div class="application-item">
+                    <img src="{{ .ImageURL }}" alt="{{ .Name }}" class="item-image">
+                    <div class="item-info">
+                        <span class="item-title">{{ .Name }}</span>
+                        <p class="item-description">{{ .Description }}</p>
+                    </div>
+                    <div class="item-field">
+                        <input type="text" value="{{ .FoundDefects }}" readonly>
+                    </div>
+                    <div class="item-field">
+                        <input type="text" value="{{ .PredictedOutput }}" readonly>
+                    </div>
+                    <p class="item-century">{{ .Century }}</p>
+                </div>
+                {{ end }}
+            </div>
+            
+            <div class="application-summary">
+                {{ len .Items }} заявки в корзине
+            </div>
+        </div>
+    </main>
+
+</body>
+</html>

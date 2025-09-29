@@ -1,0 +1,194 @@
+/* resources/styles/application_style.css */
+
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
+
+/* Общие стили */
+body {
+    margin: 0;
+    font-family: 'Roboto', sans-serif;
+    font-weight: 400;
+    background-color: #E9E9E9;
+    color: #000000;
+}
+
+.container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+a {
+    text-decoration: none;
+    color: inherit;
+}
+
+/* Header */
+.header {
+    background-color: #FFFFFF;
+    padding: 15px 0;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.header-container {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+}
+
+.logo img {
+    height: 18px;
+    width: 55px;
+    display: block;
+}
+
+/* 
+=====================================================
+=== Стили для контента страницы корзины =============
+=====================================================
+*/
+.main {
+    padding: 40px 0;
+}
+
+/* Строка фильтра */
+.filter-bar {
+    width: 1317px;
+    height: 52px;
+    border-radius: 22px;
+    background-color: #FFFFFF;
+    margin: 0 auto 25px auto;
+    display: flex;
+    align-items: center;
+    /* ИЗМЕНЕНО: верх/низ 0, справа 4px, слева 20px */
+    padding: 0 4px 0 20px;
+    box-sizing: border-box;
+}
+
+.filter-bar label {
+    font-size: 16px;
+    color: #000000;
+    margin-right: 20px;
+}
+
+.filter-input {
+    width: 1034px;
+    height: 44px;
+    border-radius: 22px;
+    background-color: #E9E9E9;
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    box-sizing: border-box;
+    font-size: 16px;
+    margin-left: auto;
+}
+
+/* Заголовки для колонок */
+.application-header {
+    width: 1313px;
+    margin: 0 auto 10px auto;
+    padding: 0 20px;
+    box-sizing: border-box;
+    display: grid;
+    grid-template-columns: 155px 2fr 1.2fr 1.2fr 1fr;
+    gap: 30px;
+}
+
+.header-label {
+    grid-column: span 1;
+    font-size: 14px;
+    color: #000000;
+    white-space: nowrap;
+}
+
+.header-label:first-child {
+    grid-column-start: 3;
+}
+
+.cart-items-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 22px;
+}
+
+/* Стили для самой карточки-строки */
+.application-item {
+    width: 1313px;
+    height: 191px;
+    background-color: #FFFFFF;
+    border-radius: 15px;
+    box-sizing: border-box;
+    padding: 0 22px 0 20px;
+    display: grid;
+    grid-template-columns: 155px 2fr 1.2fr 1.2fr 1fr;
+    align-items: start;
+    gap: 30px;
+}
+
+/* Картинка */
+.item-image {
+    width: 155px;
+    height: 155px;
+    object-fit: cover;
+    border-radius: 8px;
+    align-self: center;
+}
+
+/* Блок с текстовой информацией */
+.item-info {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-top: 19px;
+}
+
+.item-title {
+    font-weight: 500;
+    font-size: 18px;
+}
+
+.item-description {
+    font-size: 14px;
+    color: #000000;
+    margin: 0;
+}
+
+/* Век */
+.item-century {
+    font-size: 16px;
+    font-weight: 700;
+    color: #000000;
+    margin: 0;
+    padding-top: 19px;
+    text-align: right;
+}
+
+/* Блок с полем ввода */
+.item-field {
+    display: flex;
+    flex-direction: column;
+    padding-top: 19px;
+}
+
+.item-field input {
+    width: 296px;
+    height: 44px;
+    border-radius: 22px;
+    padding: 0 15px;
+    border: 1px solid #DDDDDD;
+    background-color: #FFFFFF;
+    font-family: 'Roboto', sans-serif;
+    font-size: 16px;
+    box-sizing: border-box;
+}
+
+.application-summary {
+    width: 1313px;
+    margin: 25px auto 0 auto;
+    text-align: right;
+    font-weight: 400;
+}

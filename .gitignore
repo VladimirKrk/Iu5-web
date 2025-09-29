@@ -1,0 +1,11 @@
+/lab1
+
+# IDE settings
+.idea/
+.vscode/
+
+# Local data
+minio-data/
+
+# Mac files
+.DS_Store

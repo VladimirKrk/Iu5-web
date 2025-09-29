@@ -66,9 +66,44 @@ func (h *Handler) ServiceDetailHandler(ctx *gin.Context) {
 func (h *Handler) ApplicationDetailHandler(ctx *gin.Context) {
 	app, _ := h.Repository.GetApplication()
 
-	for i := range app.Items {
-		app.Items[i].ImageURL = repository.MINIO_URL + app.Items[i].ImageKey
+	// Создаем новую структуру для "обогащенных" данных, которые мы передадим в шаблон
+	type EnrichedApplicationItem struct {
+		Name            string
+		Description     string
+		Century         string
+		FoundDefects    int
+		PredictedOutput string
+		ImageURL        string
 	}
 
-	ctx.HTML(http.StatusOK, "application_detail.html", app)
+	// Создаем срез для хранения этих обогащенных данных
+	enrichedItems := make([]EnrichedApplicationItem, 0, len(app.Items))
+
+	// Проходим циклом по каждому элементу в заявке
+	for _, item := range app.Items {
+		// Для каждого элемента находим соответствующую услугу по ServiceID
+		service, err := h.Repository.GetServiceByID(item.ServiceID)
+		if err != nil {
+			logrus.Error(err)
+			continue // Пропускаем, если услуга не найдена
+		}
+
+		// Создаем обогащенный объект, объединяя данные из услуги и из заявки
+		enrichedItem := EnrichedApplicationItem{
+			Name:            service.Name,
+			Description:     service.ShortDescription, // Используем короткое описание
+			Century:         service.Century,
+			FoundDefects:    item.FoundDefects,
+			PredictedOutput: item.PredictedOutput,
+			ImageURL:        repository.MINIO_URL + service.ImageKey,
+		}
+		// Добавляем его в наш срез
+		enrichedItems = append(enrichedItems, enrichedItem)
+	}
+
+	// Передаем в шаблон ID заявки и новый, обогащенный список элементов
+	ctx.HTML(http.StatusOK, "application_detail.html", gin.H{
+		"ID":    app.ID,
+		"Items": enrichedItems,
+	})
 }

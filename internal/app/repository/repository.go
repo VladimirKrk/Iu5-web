@@ -19,16 +19,12 @@ type Service struct {
 	ExtraImageURL    string
 }
 
-// ДОБАВЛЕНЫ НОВЫЕ ПОЛЯ
+// remove extra fields, everything else will be added
+// from the previous struct
 type ApplicationItem struct {
 	ServiceID       int
-	Name            string
-	Description     string // <-- НОВОЕ ПОЛЕ
-	Century         string // <-- НОВОЕ ПОЛЕ
 	FoundDefects    int
 	PredictedOutput string
-	ImageKey        string
-	ImageURL        string
 }
 
 type Application struct {
@@ -54,21 +50,13 @@ func NewRepository() (*Repository, error) {
 			// ЗАПОЛНЯЕМ НОВЫЕ ПОЛЯ
 			{
 				ServiceID:       1,
-				Name:            "Фарфорный завод",
-				Description:     "Создание фарфоровых кухонных принадлежностей и индивидуальных заказов.",
-				Century:         "XIX век",
 				FoundDefects:    80,
 				PredictedOutput: "5000 шт.",
-				ImageKey:        "Cup.png",
 			},
 			{
 				ServiceID:       2,
-				Name:            "Костромская кузница",
-				Description:     "Круглогодичная ковка предметов быта из металла.",
-				Century:         "XIX век",
 				FoundDefects:    80,
 				PredictedOutput: "1000 шт.",
-				ImageKey:        "horse_shoe.png",
 			},
 		},
 	}

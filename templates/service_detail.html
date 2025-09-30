@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ .Name }}</title>
+    <title>{{ .Service.Name }}</title> <!-- Обращаемся через .Service -->
     <link rel="stylesheet" href="/resources/styles/detail_style.css">
 </head>
 <body>
@@ -18,25 +18,25 @@
 
     <main class="main">
         <div class="title-section">
-            <!-- Заголовок теперь в своей обертке для точного позиционирования -->
             <div class="title-wrapper">
-                <h1 class="detail-title">{{ .Name }}</h1>
+                <h1 class="detail-title">{{ .Service.Name }}</h1> <!-- Обращаемся через .Service -->
             </div>
-            <p class="detail-century">{{ .Century }}</p>
+            <p class="detail-century">{{ .Service.Century }}</p> <!-- Обращаемся через .Service -->
         </div>
 
-        <!-- НОВЫЙ БЛОК-ОБЕРТКА ДЛЯ ГАЛЕРЕИ И ОПИСАНИЯ -->
         <div class="content-row">
             <div class="photo-gallery">
                 <div class="photo-card">
-                    <img src="{{ .ImageURL }}" alt="{{ .Name }}">
+                    <!-- .ImageURL - поле верхнего уровня, оставляем -->
+                    <img src="{{ .ImageURL }}" alt="{{ .Service.Name }}">
                 </div>
                 <div class="photo-card">
-                    <img src="{{ .ExtraImageURL }}" alt="{{ .Name }} (дополнительное фото)">
+                    <!-- .ExtraImageURL - поле верхнего уровня, оставляем -->
+                    <img src="{{ .ExtraImageURL }}" alt="{{ .Service.Name }} (дополнительное фото)">
                 </div>
             </div>
             <div class="description-wrapper">
-                <p>{{ .Description }}</p>
+                <p>{{ .Service.Description }}</p> <!-- Обращаемся через .Service -->
             </div>
         </div>
     </main>

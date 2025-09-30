@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="/resources/styles/style.css">
 </head>
 <body>
+
     <header class="header">
         <div class="container header-container">
             <a href="/" class="logo">
@@ -18,15 +19,13 @@
     <div class="search-section">
         <div class="container">
             <form action="/" method="GET" class="search-form">
-                <!-- ИЗМЕНЕНО: name="q" стало name="мастерская" -->
                 <input type="text" name="мастерская" class="search-input" value="{{ .SearchQuery }}">
                 <button type="submit" class="search-button"></button>
             </form>
-
-            <!-- ИЗМЕНЕНО: ссылка теперь ведет на /мастерская/ -->
             <a href="/мастерская/{{ .Application.ID }}" class="cart-link">
                 <img src="/resources/img/cart.png" alt="Корзина">
-                <span class="cart-count">{{ len .Application.Items }}</span>
+                <!-- Меняем .Application.Items на .ItemCount, как в хендлере -->
+                <span class="cart-count">{{ .ItemCount }}</span>
             </a>
         </div>
     </div>
@@ -36,15 +35,21 @@
             <div class="card-grid">
                 {{ range .Services }}
                 <div class="card">
-                    <img src="{{ .ImageURL }}" alt="{{ .Name }}" class="card-image">
+                    <!-- .ImageURL - поле верхнего уровня, оставляем как есть -->
+                    <img src="{{ .ImageURL }}" alt="{{ .Service.Name }}" class="card-image">
                     <div class="card-body">
                         <div class="card-content">
-                            <h3 class="card-title">{{ .Name }}</h3>
-                            <p class="card-description">{{ .ShortDescription }}</p>
+                            <!-- Обращаемся через .Service -->
+                            <h3 class="card-title">{{ .Service.Name }}</h3>
+                            <!-- Убираем short_description, как договаривались -->
                         </div>
                         <div class="card-footer">
-                            <p class="card-century">{{ .Century }}</p>
-                            <a href="/service/{{ .ID }}" class="card-button">Подробнее</a>
+                            <p class="card-century">{{ .Service.Century }}</p>
+                            <!-- Добавляем форму для POST-запроса "Добавить в корзину" -->
+                            <form action="/add-to-cart" method="POST">
+                                <input type="hidden" name="service_id" value="{{ .Service.ID }}">
+                                <button type="submit" class="card-button">Подробнее</button>
+                            </form>
                         </div>
                     </div>
                 </div>

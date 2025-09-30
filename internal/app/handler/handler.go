@@ -1,13 +1,17 @@
 package handler
 
 import (
-	"lab1/internal/app/repository"
+	"Iu5-web/internal/app/ds"
+	"Iu5-web/internal/app/repository"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 )
+
+const currentUserID = 1
 
 type Handler struct {
 	Repository *repository.Repository
@@ -17,93 +21,138 @@ func NewHandler(r *repository.Repository) *Handler {
 	return &Handler{Repository: r}
 }
 
-// Обработчик для главной страницы со списком услуг
-func (h *Handler) ServiceListHandler(ctx *gin.Context) {
-	searchQuery := ctx.Query("мастерская") // Используем "q" как в методичке
-	var services []repository.Service
-	var err error
+// ==========================================================
+// Структуры для "обогащения" данных перед передачей в шаблон
+// ==========================================================
+type ServiceForTmpl struct {
+	ds.Service
+	ImageURL      string
+	ExtraImageURL string
+}
 
-	if searchQuery == "" {
-		services, err = h.Repository.GetServices()
-	} else {
-		services, err = h.Repository.GetServicesByName(searchQuery)
-	}
+type ApplicationForTmpl struct {
+	ds.Application
+	Items []ApplicationServiceForTmpl
+}
+
+type ApplicationServiceForTmpl struct {
+	ds.ApplicationService
+	Service ServiceForTmpl
+}
+
+// ==========================================================
+// Обработчики (Handlers)
+// ==========================================================
+
+// GET / - Главная страница
+func (h *Handler) GetServicesPage(c *gin.Context) {
+	searchQuery := c.Query("мастерская")
+	services, err := h.Repository.GetServicesByName(searchQuery) // Метод работает и для пустой строки
 	if err != nil {
+		c.String(http.StatusInternalServerError, "Ошибка сервера")
 		logrus.Error(err)
+		return
 	}
 
-	for i := range services {
-		services[i].ImageURL = repository.MINIO_URL + services[i].ImageKey
+	// Обогащаем данные для шаблона
+	servicesForTmpl := make([]ServiceForTmpl, len(services))
+	for i, service := range services {
+		servicesForTmpl[i] = ServiceForTmpl{
+			Service:  service,
+			ImageURL: repository.MINIO_URL + service.ImageKey,
+		}
 	}
 
-	app, _ := h.Repository.GetApplication()
+	draftApp, _ := h.Repository.FindOrCreateDraftApplication(currentUserID)
+	itemCount, _ := h.Repository.GetDraftApplicationItemCount(currentUserID)
 
-	ctx.HTML(http.StatusOK, "service_list.html", gin.H{
-		"Services":    services,
-		"Application": app,
+	c.HTML(http.StatusOK, "service_list.html", gin.H{
+		"Services":    servicesForTmpl,
+		"Application": draftApp,
+		"ItemCount":   itemCount,
 		"SearchQuery": searchQuery,
 	})
 }
 
-// Обработчик для детальной страницы услуги
-func (h *Handler) ServiceDetailHandler(ctx *gin.Context) {
-	id, _ := strconv.Atoi(ctx.Param("id"))
-	service, err := h.Repository.GetServiceByID(id)
+// GET /service/:id - Детальная страница
+func (h *Handler) GetServiceDetailPage(c *gin.Context) {
+	id, _ := strconv.Atoi(c.Param("id"))
+	service, err := h.Repository.GetServiceByID(uint(id))
 	if err != nil {
-		logrus.Error(err)
-		ctx.String(http.StatusNotFound, "404 page not found")
+		c.String(http.StatusNotFound, "Страница не найдена")
 		return
 	}
 
-	// Формируем URL для обеих картинок
-	service.ImageURL = repository.MINIO_URL + service.ImageKey
-	service.ExtraImageURL = repository.MINIO_URL + service.ExtraImageKey // <-- Вот это изменение
+	// Обогащаем данные для шаблона
+	serviceForTmpl := ServiceForTmpl{
+		Service:       service,
+		ImageURL:      repository.MINIO_URL + service.ImageKey,
+		ExtraImageURL: repository.MINIO_URL + service.ExtraImageKey,
+	}
 
-	ctx.HTML(http.StatusOK, "service_detail.html", service)
+	c.HTML(http.StatusOK, "service_detail.html", serviceForTmpl)
 }
 
-// Обработчик для страницы заявки (корзины)
-func (h *Handler) ApplicationDetailHandler(ctx *gin.Context) {
-	app, _ := h.Repository.GetApplication()
-
-	// Создаем новую структуру для "обогащенных" данных, которые мы передадим в шаблон
-	type EnrichedApplicationItem struct {
-		Name            string
-		Description     string
-		Century         string
-		FoundDefects    int
-		PredictedOutput string
-		ImageURL        string
+// GET /мастерская/:id - Страница заявки
+func (h *Handler) GetApplicationPage(c *gin.Context) {
+	id, _ := strconv.Atoi(c.Param("id"))
+	app, err := h.Repository.GetApplicationByID(uint(id))
+	if err != nil {
+		c.String(http.StatusNotFound, "Заявка не найдена")
+		return
+	}
+	if app.Status == "удалён" || app.CreatorID != currentUserID {
+		c.String(http.StatusForbidden, "Доступ запрещен")
+		return
 	}
 
-	// Создаем срез для хранения этих обогащенных данных
-	enrichedItems := make([]EnrichedApplicationItem, 0, len(app.Items))
-
-	// Проходим циклом по каждому элементу в заявке
-	for _, item := range app.Items {
-		// Для каждого элемента находим соответствующую услугу по ServiceID
-		service, err := h.Repository.GetServiceByID(item.ServiceID)
-		if err != nil {
-			logrus.Error(err)
-			continue // Пропускаем, если услуга не найдена
+	// Обогащаем данные для шаблона
+	appForTmpl := ApplicationForTmpl{
+		Application: app,
+		Items:       make([]ApplicationServiceForTmpl, len(app.Items)),
+	}
+	for i, item := range app.Items {
+		appForTmpl.Items[i] = ApplicationServiceForTmpl{
+			ApplicationService: item,
+			Service: ServiceForTmpl{
+				Service:  item.Service,
+				ImageURL: repository.MINIO_URL + item.Service.ImageKey,
+			},
 		}
-
-		// Создаем обогащенный объект, объединяя данные из услуги и из заявки
-		enrichedItem := EnrichedApplicationItem{
-			Name:            service.Name,
-			Description:     service.ShortDescription, // Используем короткое описание
-			Century:         service.Century,
-			FoundDefects:    item.FoundDefects,
-			PredictedOutput: item.PredictedOutput,
-			ImageURL:        repository.MINIO_URL + service.ImageKey,
-		}
-		// Добавляем его в наш срез
-		enrichedItems = append(enrichedItems, enrichedItem)
 	}
 
-	// Передаем в шаблон ID заявки и новый, обогащенный список элементов
-	ctx.HTML(http.StatusOK, "application_detail.html", gin.H{
-		"ID":    app.ID,
-		"Items": enrichedItems,
-	})
+	c.HTML(http.StatusOK, "application_detail.html", appForTmpl)
+}
+
+// POST /add-to-cart - Добавление услуги в заявку
+func (h *Handler) AddToCart(c *gin.Context) {
+	serviceID, _ := strconv.Atoi(c.PostForm("service_id"))
+
+	draftApp, err := h.Repository.FindOrCreateDraftApplication(currentUserID)
+	if err != nil {
+		c.String(http.StatusInternalServerError, "Ошибка при создании заявки")
+		logrus.Error(err)
+		return
+	}
+
+	err = h.Repository.AddServiceToApplication(draftApp.ID, uint(serviceID))
+	if err != nil && !strings.Contains(err.Error(), "duplicate key value") {
+		c.String(http.StatusInternalServerError, "Ошибка при добавлении услуги")
+		logrus.Error(err)
+		return
+	}
+
+	c.Redirect(http.StatusFound, "/")
+}
+
+// POST /delete-application - Логическое удаление заявки
+func (h *Handler) DeleteApplication(c *gin.Context) {
+	appID, _ := strconv.Atoi(c.PostForm("application_id"))
+	err := h.Repository.DeleteApplicationLogically(uint(appID), currentUserID)
+	if err != nil {
+		c.String(http.StatusNotFound, "Не удалось удалить заявку")
+		logrus.Error(err)
+		return
+	}
+	c.Redirect(http.StatusFound, "/")
 }

@@ -1,87 +1,128 @@
 package repository
 
 import (
-	"fmt"
-	"strings"
+	"Iu5-web/internal/app/ds" // Убедитесь, что здесь Iu5-web
+	"time"
+
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 )
 
+// ДОБАВЬТЕ ЭТУ СТРОКУ
 const MINIO_URL = "http://localhost:9000/vlk-images/"
 
-type Service struct {
-	ID               int
-	Name             string
-	Description      string
-	ShortDescription string
-	Century          string
-	ImageKey         string
-	ImageURL         string
-	ExtraImageKey    string
-	ExtraImageURL    string
-}
-
-// remove extra fields, everything else will be added
-// from the previous struct
-// here i only need id, and many-many fields
-type ApplicationItem struct {
-	ServiceID       int
-	FoundDefects    int
-	PredictedOutput string
-}
-
-type Application struct {
-	ID    int
-	Items []ApplicationItem
-}
-
 type Repository struct {
-	services    []Service
-	application Application
+	db *gorm.DB
 }
 
-func NewRepository() (*Repository, error) {
-	services := []Service{
-		{ID: 1, Name: "Фарфорный завод", Description: "Создание фарфоровых кухонных принадлежностей и индивидуальных заказов.", ShortDescription: "Создание фарфоровых кухонных принадлежностей и индивидуальных заказов.", Century: "XIX век", ImageKey: "Cup.png", ExtraImageKey: "extra_cup.png"},
-		{ID: 2, Name: "Костромская кузница", Description: "Круглогодичная ковка предметов быта из металла.", ShortDescription: "Круглогодичная ковка предметов быта из металла.", Century: "XIX век", ImageKey: "horse_shoe.png", ExtraImageKey: "extra_horse_shoe.png"},
-		{ID: 3, Name: "Мастерская плетения прута", Description: "Плетение корзин из ивового прута.", ShortDescription: "Плетение корзин из ивового прута.", Century: "XX век", ImageKey: "basket.png", ExtraImageKey: "extra_basket.png"},
+func New(dsn string) (*Repository, error) {
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	if err != nil {
+		return nil, err
 	}
-
-	application := Application{
-		ID: 101,
-		Items: []ApplicationItem{
-			// ЗАПОЛНЯЕМ НОВЫЕ ПОЛЯ
-			{
-				ServiceID:       1,
-				FoundDefects:    80,
-				PredictedOutput: "5000 шт.",
-			},
-			{
-				ServiceID:       2,
-				FoundDefects:    80,
-				PredictedOutput: "1000 шт.",
-			},
-		},
-	}
-
-	return &Repository{services: services, application: application}, nil
+	return &Repository{db: db}, nil
 }
 
-// ... остальной код файла остается без изменений ...
-func (r *Repository) GetServices() ([]Service, error)      { return r.services, nil }
-func (r *Repository) GetApplication() (Application, error) { return r.application, nil }
-func (r *Repository) GetServiceByID(id int) (Service, error) {
-	for _, service := range r.services {
-		if service.ID == id {
-			return service, nil
+// --------------------------------------------------------------------
+// МЕТОДЫ ДЛЯ РАБОТЫ С УСЛУГАМИ (SERVICES)
+// --------------------------------------------------------------------
+
+// GetAllServices получает все активные услуги (через GORM)
+func (r *Repository) GetAllServices() ([]ds.Service, error) {
+	var services []ds.Service
+	// Ищем все услуги, у которых is_deleted = false
+	result := r.db.Where("is_deleted = ?", false).Find(&services)
+	return services, result.Error
+}
+
+// GetServicesByName ищет активные услуги по имени (через GORM)
+func (r *Repository) GetServicesByName(name string) ([]ds.Service, error) {
+	var services []ds.Service
+	// Ищем услуги, где имя содержит подстроку (ILIKE - регистронезависимый поиск)
+	// и которые не удалены
+	result := r.db.Where("name ILIKE ? AND is_deleted = ?", "%"+name+"%", false).Find(&services)
+	return services, result.Error
+}
+
+// GetServiceByID находит одну услугу по ее ID (через GORM)
+func (r *Repository) GetServiceByID(id uint) (ds.Service, error) {
+	var service ds.Service
+	result := r.db.First(&service, id)
+	return service, result.Error
+}
+
+// --------------------------------------------------------------------
+// МЕТОДЫ ДЛЯ РАБОТЫ С ЗАЯВКАМИ (APPLICATIONS)
+// --------------------------------------------------------------------
+
+// GetApplicationByID находит одну заявку по ее ID (через GORM)
+// Preload("Items.Service") автоматически подгружает связанные данные!
+func (r *Repository) GetApplicationByID(id uint) (ds.Application, error) {
+	var application ds.Application
+	// .Preload("Items.Service") - это "магия" GORM.
+	// Он выполнит JOIN и заполнит данные по каждой услуге в заявке.
+	result := r.db.Preload("Items.Service").First(&application, id)
+	return application, result.Error
+}
+
+// FindOrCreateDraftApplication находит или создает заявку-черновик для пользователя (через GORM)
+func (r *Repository) FindOrCreateDraftApplication(userID uint) (ds.Application, error) {
+	var application ds.Application
+	// Ищем заявку со статусом 'черновик' для данного пользователя
+	err := r.db.Where("creator_id = ? AND status = ?", userID, "черновик").First(&application).Error
+
+	// Если заявка не найдена, создаем новую
+	if err == gorm.ErrRecordNotFound {
+		newApp := ds.Application{
+			Status:    "черновик",
+			CreatedAt: time.Now(),
+			CreatorID: userID,
 		}
+		err = r.db.Create(&newApp).Error
+		return newApp, err
 	}
-	return Service{}, fmt.Errorf("услуга с id %d не найдена", id)
+
+	return application, err
 }
-func (r *Repository) GetServicesByName(name string) ([]Service, error) {
-	var result []Service
-	for _, service := range r.services {
-		if strings.Contains(strings.ToLower(service.Name), strings.ToLower(name)) {
-			result = append(result, service)
-		}
+
+// AddServiceToApplication добавляет услугу в заявку (через GORM)
+func (r *Repository) AddServiceToApplication(appID, serviceID uint) error {
+	item := ds.ApplicationService{
+		ApplicationID: appID,
+		ServiceID:     serviceID,
+		// Здесь можно будет добавить значения по умолчанию для found_defects и т.д., если нужно
 	}
-	return result, nil
+	// Создаем новую запись в таблице-связке
+	result := r.db.Create(&item)
+	return result.Error
+}
+
+// DeleteApplicationLogically выполняет логическое удаление заявки (через чистый SQL)
+func (r *Repository) DeleteApplicationLogically(appID, userID uint) error {
+	// Выполняем SQL UPDATE запрос, как того требует методичка.
+	// Мы также проверяем, что пользователь может удалить только свою заявку.
+	result := r.db.Exec("UPDATE applications SET status = ? WHERE id = ? AND creator_id = ?", "удалён", appID, userID)
+
+	// Проверяем, что хотя бы одна строка была затронута
+	if result.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound // Возвращаем ошибку, если заявка не найдена или не принадлежит пользователю
+	}
+
+	return result.Error
+}
+
+// GetDraftApplicationItemCount получает количество услуг в заявке-черновике пользователя
+func (r *Repository) GetDraftApplicationItemCount(userID uint) (int64, error) {
+	var application ds.Application
+	err := r.db.Where("creator_id = ? AND status = ?", userID, "черновик").First(&application).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return 0, nil // Если черновика нет, то и товаров в нем 0. Это не ошибка.
+		}
+		return 0, err
+	}
+
+	var count int64
+	err = r.db.Model(&ds.ApplicationService{}).Where("application_id = ?", application.ID).Count(&count).Error
+	return count, err
 }

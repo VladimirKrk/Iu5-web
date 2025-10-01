@@ -130,6 +130,10 @@ a {
     box-sizing: border-box;
     padding: 0 4px;
 }
+.cart-link-disabled {
+    cursor: default; /* Курсор остается стрелкой, а не рукой */
+    opacity: 0.5;    /* Делаем иконку полупрозрачной */
+}
 
 /* Main content и карточки остаются без изменений */
 .main {

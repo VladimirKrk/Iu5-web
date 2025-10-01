@@ -7,7 +7,6 @@
     <link rel="stylesheet" href="/resources/styles/style.css">
 </head>
 <body>
-
     <header class="header">
         <div class="container header-container">
             <a href="/" class="logo">
@@ -22,13 +21,26 @@
                 <input type="text" name="мастерская" class="search-input" value="{{ .SearchQuery }}">
                 <button type="submit" class="search-button"></button>
             </form>
-            <a href="/мастерская/{{ .Application.ID }}" class="cart-link">
-                <img src="/resources/img/cart.png" alt="Корзина">
-                <span class="cart-count">{{ .ItemCount }}</span>
-            </a>
+
+            <!-- ИЗМЕНЕНИЕ ЗДЕСЬ: Добавлено условие if/else -->
+            {{ if gt .ItemCount 0 }}
+                <!-- Если товаров > 0, это будет кликабельная ссылка -->
+                <a href="/мастерская/{{ .Application.ID }}" class="cart-link">
+                    <img src="/resources/img/cart.png" alt="Корзина">
+                    <span class="cart-count">{{ .ItemCount }}</span>
+                </a>
+            {{ else }}
+                <!-- Если товаров = 0, это будет просто некликабельный div -->
+                <div class="cart-link cart-link-disabled">
+                    <img src="/resources/img/cart.png" alt="Корзина">
+                    <span class="cart-count">0</span>
+                </div>
+            {{ end }}
+
         </div>
     </div>
-
+    
+    <!-- ... остальной код без изменений ... -->
     <main class="main">
         <div class="container">
             <div class="card-grid">
@@ -38,15 +50,9 @@
                     <div class="card-body">
                         <div class="card-content">
                             <h3 class="card-title">{{ .Service.Name }}</h3>
-                            <!-- Описание убрано из HTML, как мы и договаривались -->
                         </div>
                         <div class="card-footer">
                             <p class="card-century">{{ .Service.Century }}</p>
-                            <!-- 
-                                ИЗМЕНЕНИЕ ЗДЕСЬ:
-                                Вместо <form> теперь используется обычная ссылка <a>,
-                                которая ведет на детальную страницу.
-                            -->
                             <a href="/service/{{ .Service.ID }}" class="card-button">Подробнее</a>
                         </div>
                     </div>
@@ -57,6 +63,5 @@
             </div>
         </div>
     </main>
-
 </body>
 </html>

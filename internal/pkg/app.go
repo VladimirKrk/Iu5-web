@@ -22,16 +22,17 @@ func New(c *config.Config, r *gin.Engine, h *handler.Handler) *App {
 func (a *App) Run() {
 	logrus.Info("Server starting")
 
+	// Регистрируем статику
 	a.Router.LoadHTMLGlob("templates/*")
 	a.Router.Static("/resources", "./resources")
 
-	// Используем правильные имена методов
-	a.Router.GET("/", a.Handler.GetServicesPage)
-	a.Router.GET("/service/:id", a.Handler.GetServiceDetailPage)
-	a.Router.GET("/мастерская/:id", a.Handler.GetApplicationPage)
+	// Регистрируем роуты
+	a.Router.GET("/", a.Handler.GetWorkshopsPage)
+	a.Router.GET("/workshop/:id", a.Handler.GetWorkshopDetailPage)
+	a.Router.GET("/мастерская/:id", a.Handler.GetOrderPage)
 
-	a.Router.POST("/add-to-cart", a.Handler.AddToCart)
-	a.Router.POST("/delete-application", a.Handler.DeleteApplication)
+	a.Router.POST("/add-to-order", a.Handler.AddToOrder)
+	a.Router.POST("/delete-order", a.Handler.DeleteOrder)
 
 	serverAddress := fmt.Sprintf("%s:%d", a.Config.ServiceHost, a.Config.ServicePort)
 	if err := a.Router.Run(serverAddress); err != nil {

@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ .Workshop.Name }}</title>
+    <link rel="stylesheet" href="/resources/styles/workshop_style.css">
+</head>
+<body>
+
+    <header class="header">
+        <div class="container header-container">
+            <a href="/" class="logo">
+                <img src="/resources/img/logo.png" alt="VLK Logo">
+            </a>
+        </div>
+    </header>
+
+    <main class="main">
+        <div class="title-section">
+            <div class="title-wrapper">
+                <h1 class="detail-title">{{ .Workshop.Name }}</h1>
+            </div>
+            <p class="detail-century">{{ .Workshop.Century }}</p>
+        </div>
+
+        <div class="content-row">
+            <div class="photo-gallery">
+                <div class="photo-card">
+                    <img src="{{ .ImageURL }}" alt="{{ .Workshop.Name }}">
+                </div>
+                <div class="photo-card">
+                    <img src="{{ .ExtraImageURL }}" alt="{{ .Workshop.Name }} (дополнительное фото)">
+                </div>
+            </div>
+            <div class="description-wrapper">
+                <p>{{ .Workshop.Description }}</p>
+            </div>
+        </div>
+    </main>
+
+</body>
+</html>

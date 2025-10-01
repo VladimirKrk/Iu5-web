@@ -4,9 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Исторические мастерские</title>
-    <link rel="stylesheet" href="/resources/styles/style.css">
+    <link rel="stylesheet" href="/resources/styles/main_style.css">
 </head>
 <body>
+
     <header class="header">
         <div class="container header-container">
             <a href="/" class="logo">
@@ -21,39 +22,35 @@
                 <input type="text" name="мастерская" class="search-input" value="{{ .SearchQuery }}">
                 <button type="submit" class="search-button"></button>
             </form>
-
-            <!-- ИЗМЕНЕНИЕ ЗДЕСЬ: Добавлено условие if/else -->
+            
             {{ if gt .ItemCount 0 }}
-                <!-- Если товаров > 0, это будет кликабельная ссылка -->
-                <a href="/мастерская/{{ .Application.ID }}" class="cart-link">
+                <a href="/order/{{ .Order.ID }}" class="cart-link">
                     <img src="/resources/img/cart.png" alt="Корзина">
                     <span class="cart-count">{{ .ItemCount }}</span>
                 </a>
             {{ else }}
-                <!-- Если товаров = 0, это будет просто некликабельный div -->
                 <div class="cart-link cart-link-disabled">
                     <img src="/resources/img/cart.png" alt="Корзина">
                     <span class="cart-count">0</span>
                 </div>
             {{ end }}
-
         </div>
     </div>
-    
-    <!-- ... остальной код без изменений ... -->
+
     <main class="main">
         <div class="container">
             <div class="card-grid">
-                {{ range .Services }}
+                {{ range .Workshops }}
                 <div class="card">
-                    <img src="{{ .ImageURL }}" alt="{{ .Service.Name }}" class="card-image">
+                    <img src="{{ .ImageURL }}" alt="{{ .Workshop.Name }}" class="card-image">
                     <div class="card-body">
                         <div class="card-content">
-                            <h3 class="card-title">{{ .Service.Name }}</h3>
+                            <h3 class="card-title">{{ .Workshop.Name }}</h3>
                         </div>
                         <div class="card-footer">
-                            <p class="card-century">{{ .Service.Century }}</p>
-                            <a href="/service/{{ .Service.ID }}" class="card-button">Подробнее</a>
+                            <p class="card-century">{{ .Workshop.Century }}</p>
+                            <!-- Эта кнопка теперь ведет на детальную страницу -->
+                            <a href="/workshop/{{ .Workshop.ID }}" class="card-button">Подробнее</a>
                         </div>
                     </div>
                 </div>
@@ -63,5 +60,6 @@
             </div>
         </div>
     </main>
+
 </body>
 </html>

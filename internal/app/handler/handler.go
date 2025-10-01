@@ -21,137 +21,134 @@ func NewHandler(r *repository.Repository) *Handler {
 	return &Handler{Repository: r}
 }
 
-// ==========================================================
-// Структуры для "обогащения" данных перед передачей в шаблон
-// ==========================================================
-type ServiceForTmpl struct {
-	ds.Service
+// Структуры для данных перед передачей в шаблон
+type WorkshopForTmpl struct {
+	ds.Workshop
 	ImageURL      string
 	ExtraImageURL string
 }
 
-type ApplicationForTmpl struct {
-	ds.Application
-	Items []ApplicationServiceForTmpl
+type OrderForTmpl struct {
+	ds.ProductionOrder
+	Items []OrderWorkshopForTmpl
 }
 
-type ApplicationServiceForTmpl struct {
-	ds.ApplicationService
-	Service ServiceForTmpl
+type OrderWorkshopForTmpl struct {
+	ds.OrderWorkshop
+	Workshop WorkshopForTmpl
 }
 
-// ==========================================================
 // Обработчики (Handlers)
-// ==========================================================
 
 // GET / - Главная страница
-func (h *Handler) GetServicesPage(c *gin.Context) {
+func (h *Handler) GetWorkshopsPage(c *gin.Context) {
 	searchQuery := c.Query("мастерская")
-	services, err := h.Repository.GetServicesByName(searchQuery) // Метод работает и для пустой строки
+	var workshops []ds.Workshop
+	var err error
+
+	if searchQuery == "" {
+		workshops, err = h.Repository.GetAllWorkshops()
+	} else {
+		workshops, err = h.Repository.GetWorkshopsByName(searchQuery)
+	}
 	if err != nil {
 		c.String(http.StatusInternalServerError, "Ошибка сервера")
 		logrus.Error(err)
 		return
 	}
 
-	// Обогащаем данные для шаблона
-	servicesForTmpl := make([]ServiceForTmpl, len(services))
-	for i, service := range services {
-		servicesForTmpl[i] = ServiceForTmpl{
-			Service:  service,
-			ImageURL: repository.MINIO_URL + service.ImageKey,
+	workshopsForTmpl := make([]WorkshopForTmpl, len(workshops))
+	for i, workshop := range workshops {
+		workshopsForTmpl[i] = WorkshopForTmpl{
+			Workshop: workshop,
+			ImageURL: repository.MINIO_URL + workshop.ImageKey,
 		}
 	}
 
-	draftApp, _ := h.Repository.FindOrCreateDraftApplication(currentUserID)
-	itemCount, _ := h.Repository.GetDraftApplicationItemCount(currentUserID)
+	draftOrder, _ := h.Repository.FindOrCreateDraftOrder(currentUserID)
+	itemCount, _ := h.Repository.GetDraftOrderItemCount(currentUserID)
 
-	c.HTML(http.StatusOK, "service_list.html", gin.H{
-		"Services":    servicesForTmpl,
-		"Application": draftApp,
+	c.HTML(http.StatusOK, "workshop_list.html", gin.H{
+		"Workshops":   workshopsForTmpl,
+		"Order":       draftOrder,
 		"ItemCount":   itemCount,
 		"SearchQuery": searchQuery,
 	})
 }
 
-// GET /service/:id - Детальная страница
-func (h *Handler) GetServiceDetailPage(c *gin.Context) {
+// GET /workshop/:id - Детальная страница
+func (h *Handler) GetWorkshopDetailPage(c *gin.Context) {
 	id, _ := strconv.Atoi(c.Param("id"))
-	service, err := h.Repository.GetServiceByID(uint(id))
+	workshop, err := h.Repository.GetWorkshopByID(uint(id))
 	if err != nil {
 		c.String(http.StatusNotFound, "Страница не найдена")
 		return
 	}
 
-	// Обогащаем данные для шаблона
-	serviceForTmpl := ServiceForTmpl{
-		Service:       service,
-		ImageURL:      repository.MINIO_URL + service.ImageKey,
-		ExtraImageURL: repository.MINIO_URL + service.ExtraImageKey,
+	workshopForTmpl := WorkshopForTmpl{
+		Workshop:      workshop,
+		ImageURL:      repository.MINIO_URL + workshop.ImageKey,
+		ExtraImageURL: repository.MINIO_URL + workshop.ExtraImageKey,
 	}
 
-	c.HTML(http.StatusOK, "service_detail.html", serviceForTmpl)
+	c.HTML(http.StatusOK, "workshop_detail.html", workshopForTmpl)
 }
 
-// GET /мастерская/:id - Страница заявки
-func (h *Handler) GetApplicationPage(c *gin.Context) {
+// GET /order/:id - Страница заказа
+func (h *Handler) GetOrderPage(c *gin.Context) {
 	id, _ := strconv.Atoi(c.Param("id"))
-	app, err := h.Repository.GetApplicationByID(uint(id))
+	order, err := h.Repository.GetOrderByID(uint(id))
 	if err != nil {
-		c.String(http.StatusNotFound, "Заявка не найдена")
+		c.String(http.StatusNotFound, "Заказ не найден")
 		return
 	}
-	if app.Status == "удалён" || app.CreatorID != currentUserID {
+	if order.Status == "удалён" || order.CreatorID != currentUserID {
 		c.String(http.StatusForbidden, "Доступ запрещен")
 		return
 	}
 
-	// Обогащаем данные для шаблона
-	appForTmpl := ApplicationForTmpl{
-		Application: app,
-		Items:       make([]ApplicationServiceForTmpl, len(app.Items)),
+	orderForTmpl := OrderForTmpl{
+		ProductionOrder: order,
+		Items:           make([]OrderWorkshopForTmpl, len(order.Items)),
 	}
-	for i, item := range app.Items {
-		appForTmpl.Items[i] = ApplicationServiceForTmpl{
-			ApplicationService: item,
-			Service: ServiceForTmpl{
-				Service:  item.Service,
+	for i, item := range order.Items {
+		orderForTmpl.Items[i] = OrderWorkshopForTmpl{
+			OrderWorkshop: item,
+			Workshop: WorkshopForTmpl{
+				Workshop: item.Service, // GORM заполняет это поле Service
 				ImageURL: repository.MINIO_URL + item.Service.ImageKey,
 			},
 		}
 	}
 
-	c.HTML(http.StatusOK, "application_detail.html", appForTmpl)
+	c.HTML(http.StatusOK, "order_detail.html", orderForTmpl)
 }
 
-// POST /add-to-cart - Добавление услуги в заявку
-func (h *Handler) AddToCart(c *gin.Context) {
-	serviceID, _ := strconv.Atoi(c.PostForm("service_id"))
+// POST /add-to-order - Добавление мастерской в заказ
+func (h *Handler) AddToOrder(c *gin.Context) {
+	workshopID, _ := strconv.Atoi(c.PostForm("workshop_id"))
 
-	draftApp, err := h.Repository.FindOrCreateDraftApplication(currentUserID)
+	draftOrder, err := h.Repository.FindOrCreateDraftOrder(currentUserID)
 	if err != nil {
-		c.String(http.StatusInternalServerError, "Ошибка при создании заявки")
-		logrus.Error(err)
+		c.String(http.StatusInternalServerError, "Ошибка при создании заказа")
 		return
 	}
 
-	err = h.Repository.AddServiceToApplication(draftApp.ID, uint(serviceID))
+	err = h.Repository.AddWorkshopToOrder(draftOrder.ID, uint(workshopID))
 	if err != nil && !strings.Contains(err.Error(), "duplicate key value") {
-		c.String(http.StatusInternalServerError, "Ошибка при добавлении услуги")
-		logrus.Error(err)
+		c.String(http.StatusInternalServerError, "Ошибка при добавлении в заказ")
 		return
 	}
 
 	c.Redirect(http.StatusFound, "/")
 }
 
-// POST /delete-application - Логическое удаление заявки
-func (h *Handler) DeleteApplication(c *gin.Context) {
-	appID, _ := strconv.Atoi(c.PostForm("application_id"))
-	err := h.Repository.DeleteApplicationLogically(uint(appID), currentUserID)
+// POST /delete-order - Логическое удаление заказа
+func (h *Handler) DeleteOrder(c *gin.Context) {
+	orderID, _ := strconv.Atoi(c.PostForm("order_id"))
+	err := h.Repository.DeleteOrderLogically(uint(orderID), currentUserID)
 	if err != nil {
-		c.String(http.StatusNotFound, "Не удалось удалить заявку")
-		logrus.Error(err)
+		c.String(http.StatusNotFound, "Не удалось удалить заказ")
 		return
 	}
 	c.Redirect(http.StatusFound, "/")

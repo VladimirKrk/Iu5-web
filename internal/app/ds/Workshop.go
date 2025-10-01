@@ -1,7 +1,6 @@
 package ds
 
-// Service представляет таблицу services
-type Service struct {
+type Workshop struct {
 	ID            uint   `gorm:"primaryKey"`
 	Name          string `gorm:"type:varchar(255);not null"`
 	Description   string `gorm:"type:text"`
@@ -11,6 +10,4 @@ type Service struct {
 	IsDeleted     bool   `gorm:"default:false"`
 }
 
-func (s Service) TableName() string {
-	return "services"
-}
+func (w Workshop) TableName() string { return "services" } // Таблица остается services

@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Заявка №{{ .Application.ID }}</title> <!-- Обращаемся через .Application -->
-    <link rel="stylesheet" href="/resources/styles/application_style.css">
+    <title>Заказ №{{ .ProductionOrder.ID }}</title>
+    <link rel="stylesheet" href="/resources/styles/order_style.css">
 </head>
 <body>
 
@@ -24,33 +24,27 @@
                     <span>Илья и сыновья</span>
                 </div>
             </div>
-            
+
             <div class="application-header">
                 <div class="header-label">введите количество найденного брака</div>
                 <div class="header-label">прогнозируемый объем выпуска в год</div>
             </div>
 
             <div class="cart-items-wrapper">
-                <!-- Цикл теперь по .Items -->
                 {{ range .Items }}
                 <div class="application-item">
-                    <!-- Путь к картинке: item -> Service -> ImageURL -->
-                    <img src="{{ .Service.ImageURL }}" alt="{{ .Service.Service.Name }}" class="item-image">
+                    <img src="{{ .Workshop.ImageURL }}" alt="{{ .Workshop.Workshop.Name }}" class="item-image">
                     <div class="item-info">
-                        <!-- Путь к названию: item -> Service -> Service -> Name -->
-                        <span class="item-title">{{ .Service.Service.Name }}</span>
-                        <!-- Путь к описанию: item -> Service -> Service -> Description -->
-                        <p class="item-description">{{ .Service.Service.Description }}</p>
+                        <span class="item-title">{{ .Workshop.Workshop.Name }}</span>
+                        <p class="item-description">{{ .Workshop.Workshop.Description }}</p>
                     </div>
                     <div class="item-field">
-                        <!-- Поля из ApplicationService доступны напрямую -->
                         <input type="text" value="{{ .FoundDefects }}" readonly>
                     </div>
                     <div class="item-field">
                         <input type="text" value="{{ .PredictedOutput }}" readonly>
                     </div>
-                    <!-- Путь к веку: item -> Service -> Service -> Century -->
-                    <p class="item-century">{{ .Service.Service.Century }}</p>
+                    <p class="item-century">{{ .Workshop.Workshop.Century }}</p>
                 </div>
                 {{ end }}
             </div>
@@ -58,11 +52,12 @@
             <div class="application-summary">
                 {{ len .Items }} заявки в корзине
             </div>
-            
-            <!-- Форма для POST-запроса на удаление заявки -->
-            <form action="/delete-application" method="POST" style="text-align: center; margin-top: 30px;">
-                <input type="hidden" name="application_id" value="{{ .Application.ID }}">
-                <button type="submit" class="delete-button">Удалить заявку</button>
+
+            <!-- Форма для POST-запроса на удаление заказа -->
+            <form action="/delete-order" method="POST" style="text-align: center; margin-top: 30px;">
+                <input type="hidden" name="order_id" value="{{ .ProductionOrder.ID }}">
+                <!-- Простая кнопка для примера. Можно стилизовать позже -->
+                <button type="submit" style="padding: 10px 20px; font-size: 16px; cursor: pointer;">Удалить заказ</button>
             </form>
         </div>
     </main>

@@ -1,11 +1,15 @@
+// internal/app/repository/repository.go
 package repository
 
 import (
 	"Iu5-web/internal/app/ds"
+	"log" // <-- ДОБАВЬТЕ
+	"os"  // <-- ДОБАВЬТЕ
 	"time"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger" // <-- ДОБАВЬТЕ
 )
 
 const MINIO_URL = "http://localhost:9000/vlk-images/"
@@ -15,12 +19,25 @@ type Repository struct {
 }
 
 func New(dsn string) (*Repository, error) {
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	newLogger := logger.New(
+		log.New(os.Stdout, "\r\n", log.LstdFlags),
+		logger.Config{
+			SlowThreshold: time.Second,
+			LogLevel:      logger.Info, // Показываем все SQL-запросы
+			Colorful:      true,
+		},
+	)
+
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
+		Logger: newLogger, // <-- ПРИМЕНЯЕМ ЛОГГЕР
+	})
 	if err != nil {
 		return nil, err
 	}
 	return &Repository{db: db}, nil
 }
+
+// ... остальной код репозитория ...
 
 // === МЕТОДЫ ДЛЯ МАСТЕРСКИХ (WORKSHOPS) ===
 

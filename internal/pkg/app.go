@@ -29,7 +29,7 @@ func (a *App) Run() {
 	// Регистрируем роуты
 	a.Router.GET("/", a.Handler.GetWorkshopsPage)
 	a.Router.GET("/workshop/:id", a.Handler.GetWorkshopDetailPage)
-	a.Router.GET("/мастерская/:id", a.Handler.GetOrderPage)
+	a.Router.GET("/order/:id", a.Handler.GetOrderPage)
 
 	a.Router.POST("/add-to-order", a.Handler.AddToOrder)
 	a.Router.POST("/delete-order", a.Handler.DeleteOrder)

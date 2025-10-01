@@ -45,9 +45,7 @@ a {
 }
 
 /* 
-=====================================================
-=== Стили для контента страницы корзины =============
-=====================================================
+stiles for cart
 */
 .main {
     padding: 40px 0;
@@ -72,15 +70,12 @@ a {
     margin-right: 20px;
 }
 
-/* .filter-input стилизует сам тег <input>ы */
 .filter-input {
     width: 1034px;
     height: 44px;
     border-radius: 22px;
     background-color: #E9E9E9;
     margin-left: auto;
-    
-    /* Свойства для поля ввода */
     border: none;
     outline: none;
     padding: 0 20px;
@@ -90,15 +85,16 @@ a {
     color: #000000;
 }
 
-
 /* Заголовки для колонок */
 .application-header {
     width: 1313px;
     margin: 0 auto 10px auto;
     padding: 0 20px;
     box-sizing: border-box;
+
     display: grid;
-    grid-template-columns: 155px 2fr 1.2fr 1.2fr 1fr;
+    /* ИЗМЕНЕНИЕ ЗДЕСЬ: Задаем точные размеры для колонок с полями ввода */
+    grid-template-columns: 155px 1fr 296px 296px auto;
     gap: 30px;
 }
 
@@ -128,8 +124,10 @@ a {
     border-radius: 15px;
     box-sizing: border-box;
     padding: 0 22px 0 20px;
+
     display: grid;
-    grid-template-columns: 155px 2fr 1.2fr 1.2fr 1fr;
+    /* ИЗМЕНЕНИЕ ЗДЕСЬ: Такая же сетка, как у хедера, для идеального выравнивания */
+    grid-template-columns: 155px 1fr 296px 296px auto;
     align-items: start;
     gap: 30px;
 }

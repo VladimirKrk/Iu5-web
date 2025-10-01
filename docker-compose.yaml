@@ -1,4 +1,4 @@
-version: '3.8'
+# Убрана строка "version", она больше не нужна
 
 services:
   minio:
@@ -8,9 +8,12 @@ services:
       - "9000:9000"
       - "9001:9001"
     environment:
+      # Используем ваши креды
       MINIO_ROOT_USER: MINIO_ROOT_USER
       MINIO_ROOT_PASSWORD: MINIO_ROOT_PASSWORD
     volumes:
+      # Это "bind mount". Он надежно связывает папку ./minio-data
+      # в вашем проекте с папкой /data внутри контейнера.
       - ./minio-data:/data
     command: server /data --console-address ":9001"
     networks:
@@ -26,6 +29,7 @@ services:
     ports:
       - "5432:5432"
     volumes:
+      # Это "named volume". Docker управляет им сам.
       - postgres-data:/var/lib/postgresql/data
     networks:
       - lab-net
@@ -33,7 +37,7 @@ services:
   adminer:
     image: adminer:latest
     ports:
-      - "8081:8080" # Adminer будет доступен на порту 8081
+      - "8081:8080"
     networks:
       - lab-net
 
@@ -41,6 +45,6 @@ networks:
   lab-net:
     driver: bridge
 
+# Описываем только те тома, которыми Docker управляет сам
 volumes:
   postgres-data:
-  minio-data:

@@ -3,13 +3,13 @@ package repository
 
 import (
 	"Iu5-web/internal/app/ds"
-	"log" // <-- ДОБАВЬТЕ
-	"os"  // <-- ДОБАВЬТЕ
+	"log"
+	"os"
 	"time"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
-	"gorm.io/gorm/logger" // <-- ДОБАВЬТЕ
+	"gorm.io/gorm/logger"
 )
 
 const MINIO_URL = "http://localhost:9000/vlk-images/"
@@ -29,7 +29,7 @@ func New(dsn string) (*Repository, error) {
 	)
 
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
-		Logger: newLogger, // <-- ПРИМЕНЯЕМ ЛОГГЕР
+		Logger: newLogger, // <- ПРИМЕНЯЕМ ЛОГГЕР
 	})
 	if err != nil {
 		return nil, err
@@ -57,7 +57,7 @@ func (r *Repository) GetWorkshopByID(id uint) (ds.Workshop, error) {
 	return workshop, result.Error
 }
 
-// === МЕТОДЫ ДЛЯ ЗАКАЗОВ (PRODUCTION ORDERS) ===
+// методы для заказов
 
 func (r *Repository) GetOrderByID(id uint) (ds.ProductionOrder, error) {
 	var order ds.ProductionOrder

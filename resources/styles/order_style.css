@@ -1,4 +1,4 @@
-/* resources/styles/application_style.css */
+/* resources/styles/order_style.css */
 
 @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
 
@@ -62,7 +62,6 @@ a {
     margin: 0 auto 25px auto;
     display: flex;
     align-items: center;
-    /* ИЗМЕНЕНО: верх/низ 0, справа 4px, слева 20px */
     padding: 0 4px 0 20px;
     box-sizing: border-box;
 }
@@ -73,18 +72,24 @@ a {
     margin-right: 20px;
 }
 
+/* .filter-input стилизует сам тег <input>ы */
 .filter-input {
     width: 1034px;
     height: 44px;
     border-radius: 22px;
     background-color: #E9E9E9;
-    display: flex;
-    align-items: center;
+    margin-left: auto;
+    
+    /* Свойства для поля ввода */
+    border: none;
+    outline: none;
     padding: 0 20px;
     box-sizing: border-box;
+    font-family: 'Roboto', sans-serif;
     font-size: 16px;
-    margin-left: auto;
+    color: #000000;
 }
+
 
 /* Заголовки для колонок */
 .application-header {

@@ -18,11 +18,15 @@
 
     <main class="main">
         <div class="container">
+            
             <div class="filter-bar">
                 <label>Введите название мастерской</label>
-                <div class="filter-input">
-                    <span>Илья и сыновья</span>
-                </div>
+                <!-- 
+                    ИЗМЕНЕНИЕ ЗДЕСЬ:
+                    Убрана лишняя div-обертка. Класс .filter-input теперь
+                    применен напрямую к тегу <input>.
+                -->
+                <input type="text" class="filter-input">
             </div>
 
             <div class="application-header">
@@ -52,11 +56,9 @@
             <div class="application-summary">
                 {{ len .Items }} заявки в корзине
             </div>
-
-            <!-- Форма для POST-запроса на удаление заказа -->
+            
             <form action="/delete-order" method="POST" style="text-align: center; margin-top: 30px;">
                 <input type="hidden" name="order_id" value="{{ .ProductionOrder.ID }}">
-                <!-- Простая кнопка для примера. Можно стилизовать позже -->
                 <button type="submit" style="padding: 10px 20px; font-size: 16px; cursor: pointer;">Удалить заказ</button>
             </form>
         </div>

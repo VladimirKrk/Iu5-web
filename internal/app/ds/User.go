@@ -1,6 +1,6 @@
 package ds
 
-// User представляет таблицу users
+// представляет таблицу users
 type User struct {
 	ID          uint   `gorm:"primaryKey"`
 	Login       string `gorm:"type:varchar(50);unique;not null"`

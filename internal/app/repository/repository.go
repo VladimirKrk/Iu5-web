@@ -37,9 +37,7 @@ func New(dsn string) (*Repository, error) {
 	return &Repository{db: db}, nil
 }
 
-// ... остальной код репозитория ...
-
-// === МЕТОДЫ ДЛЯ МАСТЕРСКИХ (WORKSHOPS) ===
+// методы
 
 func (r *Repository) GetAllWorkshops() ([]ds.Workshop, error) {
 	var workshops []ds.Workshop

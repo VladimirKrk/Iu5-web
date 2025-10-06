@@ -1,4 +1,5 @@
-/* Импорт шрифта Roboto с Google Fonts */
+/* resources/styles/main_style.css */
+
 @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
 
 /* Общие стили */
@@ -43,19 +44,17 @@ a {
     display: block;
 }
 
-
+/* Секция поиска и корзины */
 .search-section {
     background-color: #FFFFFF;
     padding: 20px 0;
-    /* УБИРАЕМ position: relative; отсюда */
+    border-bottom: 1px solid #E9E9E9;
 }
 
-
 .search-section .container {
-    position: relative; 
+    position: relative;
     display: flex;
-    justify-content: center; /* Центрируем поисковую строку */
-    align-items: center; /* Выравниваем по вертикали на всякий случай */
+    justify-content: center;
 }
 
 .search-form {
@@ -95,12 +94,9 @@ a {
     background-size: contain;
 }
 
-/* Стили для иконки корзины */
 .cart-link {
-    position: absolute; /* Позиционируем относительно .search-section .container */
-    /* 20px - это правый padding у .container. Это гарантирует идеальное выравнивание
-       с правым краем карточек, которые тоже находятся внутри .container */
-    right: -420px;
+    position: absolute;
+    right: 83px;
     top: 50%;
     transform: translateY(-50%);
     position: relative;
@@ -111,6 +107,11 @@ a {
     width: 23px;
     height: 20px;
     display: block;
+}
+
+.cart-link-disabled {
+    cursor: default;
+    opacity: 0.5;
 }
 
 .cart-count {
@@ -130,21 +131,20 @@ a {
     box-sizing: border-box;
     padding: 0 4px;
 }
-.cart-link-disabled {
-    cursor: default; /* Курсор остается стрелкой, а не рукой */
-    opacity: 0.5;    /* Делаем иконку полупрозрачной */
-}
 
-/* Main content и карточки остаются без изменений */
+/* Main content */
 .main {
     padding: 40px 0;
 }
+
 .card-grid {
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
     gap: 24px;
 }
+
+/* Стили для карточки */
 .card {
     width: 412px;
     border-radius: 15px;
@@ -155,10 +155,12 @@ a {
     display: flex;
     flex-direction: column;
 }
+
 .card:hover {
     transform: translateY(-5px);
     box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
 }
+
 .card-image {
     width: 353px;
     height: 353px;
@@ -168,6 +170,7 @@ a {
     object-fit: cover;
     display: block;
 }
+
 .card-body {
     padding: 20px;
     display: flex;
@@ -175,36 +178,55 @@ a {
     justify-content: space-between;
     flex-grow: 1;
 }
+
+
 .card-title {
-    margin: 0 0 10px 0;
+    margin: 0 0 15px 0;
     font-size: 18px;
     font-weight: 400;
 }
-.card-description {
-    margin: 0 0 15px 0;
-    font-size: 14px;
-    line-height: 1.4;
-    color: #555555;
-}
+
+/* "Подвал" карточки */
 .card-footer {
     display: flex;
-    justify-content: space-between;
     align-items: center;
+    gap: 10px; /* Зазор между всеми элементами, включая кнопки */
 }
+
 .card-century {
     margin: 0;
     font-size: 14px;
+    /* ВОТ "МАГИЯ": Этот элемент забирает все свободное пространство слева от себя,
+       прижимая все остальные элементы (кнопки) к правому краю. */
+    margin-right: auto;
 }
+
+/* Общий стиль для обеих кнопок */
 .card-button {
     width: 81px;
     height: 44px;
     border-radius: 22px;
-    background-color: #FFFFFF;
-    color: #000000;
     font-weight: 700;
     font-size: 14px;
     display: flex;
     justify-content: center;
     align-items: center;
     border: 1px solid #DDDDDD;
+    box-sizing: border-box;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    background-color: #FFFFFF;
+    color: #000000;
+}
+
+/* Стиль для кнопки "В корзину" */
+.card-button-primary {
+    background-color: #000000;
+    color: #FFFFFF;
+    border-color: #000000;
+}
+
+/* Сброс стилей для формы */
+.card-footer form {
+    margin: 0;
 }

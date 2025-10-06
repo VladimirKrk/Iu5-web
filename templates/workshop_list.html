@@ -47,10 +47,14 @@
                         <div class="card-content">
                             <h3 class="card-title">{{ .Workshop.Name }}</h3>
                         </div>
+
                         <div class="card-footer">
                             <p class="card-century">{{ .Workshop.Century }}</p>
-                            <!-- Эта кнопка теперь ведет на детальную страницу -->
                             <a href="/workshop/{{ .Workshop.ID }}" class="card-button">Подробнее</a>
+                            <form action="/add-to-order" method="POST">
+                                <input type="hidden" name="workshop_id" value="{{ .Workshop.ID }}">
+                                <button type="submit" class="card-button card-button-primary">В корзину</button>
+                            </form>
                         </div>
                     </div>
                 </div>

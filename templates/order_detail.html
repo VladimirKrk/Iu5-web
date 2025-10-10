@@ -18,10 +18,13 @@
 
     <main class="main">
         <div class="container">
-            <div class="filter-bar">
+            
+            <form action="/update-production-name" method="POST" class="filter-bar">
                 <label>Введите название мастерской</label>
-                <input type="text" class="filter-input">
-            </div>
+                <input type="hidden" name="application_id" value="{{ .ProductionOrder.ID }}">
+                <input type="text" name="production_name" class="filter-input" placeholder="Введите название">
+                <button type="submit" class="save-button">Сохранить</button>
+            </form>
 
             <div class="application-header">
                 <div class="header-label">введите количество найденного брака</div>
@@ -31,13 +34,10 @@
             <div class="cart-items-wrapper">
                 {{ range .Items }}
                 <div class="application-item">
-                    <!-- ИСПРАВЛЕНО: .Workshop.ImageURL -->
-                    <img src="{{ .Workshop.ImageURL }}" alt="{{ .Workshop.Name }}" class="item-image">
+                    <img src="{{ .Workshop.ImageURL }}" alt="{{ .Workshop.Workshop.Name }}" class="item-image">
                     <div class="item-info">
-                        <!-- ИСПРАВЛЕНО: .Workshop.Name -->
-                        <span class="item-title">{{ .Workshop.Name }}</span>
-                        <!-- ИСПРАВЛЕНО: .Workshop.Description -->
-                        <p class="item-description">{{ .Workshop.Description }}</p>
+                        <span class="item-title">{{ .Workshop.Workshop.Name }}</span>
+                        <p class="item-description">{{ .Workshop.Workshop.Description }}</p>
                     </div>
                     <div class="item-field">
                         <input type="text" value="{{ .FoundDefects }}" readonly>
@@ -45,8 +45,7 @@
                     <div class="item-field">
                         <input type="text" value="{{ .PredictedOutput }}" readonly>
                     </div>
-                     <!-- ИСПРАВЛЕНО: .Workshop.Century -->
-                    <p class="item-century">{{ .Workshop.Century }}</p>
+                    <p class="item-century">{{ .Workshop.Workshop.Century }}</p>
                 </div>
                 {{ end }}
             </div>

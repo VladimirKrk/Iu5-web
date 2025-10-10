@@ -25,14 +25,15 @@ func (a *App) Run() {
 	a.Router.LoadHTMLGlob("templates/*")
 	a.Router.Static("/resources", "./resources")
 
-	// ПРАВИЛЬНЫЕ РОУТЫ
+	// GET-запросы
 	a.Router.GET("/", a.Handler.GetWorkshopsPage)
 	a.Router.GET("/workshop/:id", a.Handler.GetWorkshopDetailPage)
-	a.Router.GET("/order/:id", a.Handler.GetOrderPage) // <-- Этот роут для корзины
+	a.Router.GET("/workshop_production/:id", a.Handler.GetOrderPage)
 
 	// POST-запросы
 	a.Router.POST("/add-to-order", a.Handler.AddToOrder)
 	a.Router.POST("/delete-order", a.Handler.DeleteOrder)
+	a.Router.POST("/update-production-name", a.Handler.UpdateProductionName)
 
 	serverAddress := fmt.Sprintf("%s:%d", a.Config.ServiceHost, a.Config.ServicePort)
 	if err := a.Router.Run(serverAddress); err != nil {

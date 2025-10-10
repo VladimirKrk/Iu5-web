@@ -102,3 +102,17 @@ func (r *Repository) GetDraftApplicationItemCount(userID uint) (int64, error) {
 	err = r.db.Model(&ds.WorkshopProduction{}).Where("application_id = ?", app.ID).Count(&count).Error
 	return count, err
 }
+
+func (r *Repository) UpdateProductionName(appID uint, newName string) error {
+	var firstItem ds.WorkshopProduction
+
+	// Находим первую по ID запись, связанную с этой заявкой
+	err := r.db.Where("application_id = ?", appID).Order("id asc").First(&firstItem).Error
+	if err != nil {
+		return err // Возвращаем ошибку, если в заказе нет товаров
+	}
+
+	// Обновляем только одно поле для этой найденной записи
+	result := r.db.Model(&firstItem).Update("workshop_production_name", newName)
+	return result.Error
+}

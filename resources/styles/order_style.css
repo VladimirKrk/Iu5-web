@@ -45,7 +45,9 @@ a {
 }
 
 /* 
-stiles for cart
+=====================================================
+=== Стили для контента страницы корзины =============
+=====================================================
 */
 .main {
     padding: 40px 0;
@@ -68,14 +70,14 @@ stiles for cart
     font-size: 16px;
     color: #000000;
     margin-right: 20px;
+    white-space: nowrap; /* Запрещаем перенос текста */
 }
 
 .filter-input {
-    width: 1034px;
+    width: 100%; /* Поле теперь занимает все оставшееся место */
     height: 44px;
     border-radius: 22px;
     background-color: #E9E9E9;
-    margin-left: auto;
     border: none;
     outline: none;
     padding: 0 20px;
@@ -85,16 +87,34 @@ stiles for cart
     color: #000000;
 }
 
+.filter-input::placeholder {
+  color: #555; /* Сделаем placeholder чуть светлее */
+  opacity: 1;
+}
+
+.save-button {
+    /*background-color: #000000;
+    color: #FFFFFF;*/
+    border: none;
+    border-radius: 22px;
+    height: 44px;
+    padding: 0 25px;
+    font-size: 16px;
+    font-family: 'Roboto', sans-serif;
+    cursor: pointer;
+    margin-left: 10px;
+    white-space: nowrap; /* Запрещаем перенос текста */
+}
+
+
 /* Заголовки для колонок */
 .application-header {
     width: 1313px;
     margin: 0 auto 10px auto;
     padding: 0 20px;
     box-sizing: border-box;
-
     display: grid;
-    /* ИЗМЕНЕНИЕ ЗДЕСЬ: Задаем точные размеры для колонок с полями ввода */
-    grid-template-columns: 155px 1fr 296px 296px auto;
+    grid-template-columns: 155px 2fr 1.2fr 1.2fr 1fr;
     gap: 30px;
 }
 
@@ -124,10 +144,8 @@ stiles for cart
     border-radius: 15px;
     box-sizing: border-box;
     padding: 0 22px 0 20px;
-
     display: grid;
-    /* ИЗМЕНЕНИЕ ЗДЕСЬ: Такая же сетка, как у хедера, для идеального выравнивания */
-    grid-template-columns: 155px 1fr 296px 296px auto;
+    grid-template-columns: 155px 2fr 1.2fr 1.2fr 1fr;
     align-items: start;
     gap: 30px;
 }

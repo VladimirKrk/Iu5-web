@@ -24,7 +24,7 @@
             </form>
             
             {{ if gt .ItemCount 0 }}
-                <a href="/order/{{ .Application.ID }}" class="cart-link"> 
+                <a href="/workshop_production/{{ .Application.ID }}" class="cart-link">
                     <img src="/resources/img/cart.png" alt="Корзина">
                     <span class="cart-count">{{ .ItemCount }}</span>
                 </a>
@@ -47,7 +47,6 @@
                         <div class="card-content">
                             <h3 class="card-title">{{ .Workshop.Name }}</h3>
                         </div>
-                        <!-- ИЗМЕНЕНИЕ ЗДЕСЬ: Убрана лишняя обертка для кнопок -->
                         <div class="card-footer">
                             <p class="card-century">{{ .Workshop.Century }}</p>
                             <a href="/workshop/{{ .Workshop.ID }}" class="card-button">Подробнее</a>

@@ -18,14 +18,8 @@
 
     <main class="main">
         <div class="container">
-            
             <div class="filter-bar">
                 <label>Введите название мастерской</label>
-                <!-- 
-                    ИЗМЕНЕНИЕ ЗДЕСЬ:
-                    Убрана лишняя div-обертка. Класс .filter-input теперь
-                    применен напрямую к тегу <input>.
-                -->
                 <input type="text" class="filter-input">
             </div>
 
@@ -37,10 +31,13 @@
             <div class="cart-items-wrapper">
                 {{ range .Items }}
                 <div class="application-item">
-                    <img src="{{ .Workshop.ImageURL }}" alt="{{ .Workshop.Workshop.Name }}" class="item-image">
+                    <!-- ИСПРАВЛЕНО: .Workshop.ImageURL -->
+                    <img src="{{ .Workshop.ImageURL }}" alt="{{ .Workshop.Name }}" class="item-image">
                     <div class="item-info">
-                        <span class="item-title">{{ .Workshop.Workshop.Name }}</span>
-                        <p class="item-description">{{ .Workshop.Workshop.Description }}</p>
+                        <!-- ИСПРАВЛЕНО: .Workshop.Name -->
+                        <span class="item-title">{{ .Workshop.Name }}</span>
+                        <!-- ИСПРАВЛЕНО: .Workshop.Description -->
+                        <p class="item-description">{{ .Workshop.Description }}</p>
                     </div>
                     <div class="item-field">
                         <input type="text" value="{{ .FoundDefects }}" readonly>
@@ -48,7 +45,8 @@
                     <div class="item-field">
                         <input type="text" value="{{ .PredictedOutput }}" readonly>
                     </div>
-                    <p class="item-century">{{ .Workshop.Workshop.Century }}</p>
+                     <!-- ИСПРАВЛЕНО: .Workshop.Century -->
+                    <p class="item-century">{{ .Workshop.Century }}</p>
                 </div>
                 {{ end }}
             </div>
@@ -58,7 +56,7 @@
             </div>
             
             <form action="/delete-order" method="POST" style="text-align: center; margin-top: 30px;">
-                <input type="hidden" name="order_id" value="{{ .ProductionOrder.ID }}">
+                <input type="hidden" name="application_id" value="{{ .ProductionOrder.ID }}">
                 <button type="submit" style="padding: 10px 20px; font-size: 16px; cursor: pointer;">Удалить заказ</button>
             </form>
         </div>

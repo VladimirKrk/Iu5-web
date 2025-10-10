@@ -5,151 +5,114 @@ import (
 	"Iu5-web/internal/app/repository"
 	"net/http"
 	"strconv"
-	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/sirupsen/logrus"
 )
 
 const currentUserID = 1
 
-type Handler struct {
-	Repository *repository.Repository
-}
+type Handler struct{ Repository *repository.Repository }
 
-func NewHandler(r *repository.Repository) *Handler {
-	return &Handler{Repository: r}
-}
+func NewHandler(r *repository.Repository) *Handler { return &Handler{Repository: r} }
 
-// Структуры для данных перед передачей в шаблон
 type WorkshopForTmpl struct {
 	ds.Workshop
 	ImageURL      string
 	ExtraImageURL string
 }
 
+// ИЗМЕНЕНИЕ ЗДЕСЬ
 type OrderForTmpl struct {
-	ds.ProductionOrder
-	Items []OrderWorkshopForTmpl
+	ProductionOrder ds.WorkshopApplication // <-- Теперь поле называется ProductionOrder
+	Items           []ProductionForTmpl
 }
 
-type OrderWorkshopForTmpl struct {
-	ds.OrderWorkshop
+type ProductionForTmpl struct {
+	ds.WorkshopProduction
 	Workshop WorkshopForTmpl
 }
 
-// Обработчики (Handlers)
+type ApplicationForTmpl struct {
+	ds.WorkshopApplication
+	Items []ProductionForTmpl
+}
 
-// GET / - Главная страница
 func (h *Handler) GetWorkshopsPage(c *gin.Context) {
 	searchQuery := c.Query("мастерская")
-	var workshops []ds.Workshop
-	var err error
-
-	if searchQuery == "" {
-		workshops, err = h.Repository.GetAllWorkshops()
-	} else {
-		workshops, err = h.Repository.GetWorkshopsByName(searchQuery)
-	}
-	if err != nil {
-		c.String(http.StatusInternalServerError, "Ошибка сервера")
-		logrus.Error(err)
-		return
-	}
+	workshops, _ := h.Repository.GetWorkshopsByName(searchQuery)
 
 	workshopsForTmpl := make([]WorkshopForTmpl, len(workshops))
-	for i, workshop := range workshops {
+	for i, ws := range workshops {
 		workshopsForTmpl[i] = WorkshopForTmpl{
-			Workshop: workshop,
-			ImageURL: repository.MINIO_URL + workshop.ImageKey,
+			Workshop: ws,
+			ImageURL: repository.MINIO_URL + ws.ImageKey,
 		}
 	}
 
-	draftOrder, _ := h.Repository.FindOrCreateDraftOrder(currentUserID)
-	itemCount, _ := h.Repository.GetDraftOrderItemCount(currentUserID)
+	draftApp, _ := h.Repository.FindOrCreateDraftApplication(currentUserID)
+	itemCount, _ := h.Repository.GetDraftApplicationItemCount(currentUserID)
 
 	c.HTML(http.StatusOK, "workshop_list.html", gin.H{
 		"Workshops":   workshopsForTmpl,
-		"Order":       draftOrder,
+		"Application": draftApp,
 		"ItemCount":   itemCount,
 		"SearchQuery": searchQuery,
 	})
 }
 
-// GET /workshop/:id - Детальная страница
 func (h *Handler) GetWorkshopDetailPage(c *gin.Context) {
 	id, _ := strconv.Atoi(c.Param("id"))
-	workshop, err := h.Repository.GetWorkshopByID(uint(id))
+	ws, err := h.Repository.GetWorkshopByID(uint(id))
 	if err != nil {
 		c.String(http.StatusNotFound, "Страница не найдена")
 		return
 	}
-
-	workshopForTmpl := WorkshopForTmpl{
-		Workshop:      workshop,
-		ImageURL:      repository.MINIO_URL + workshop.ImageKey,
-		ExtraImageURL: repository.MINIO_URL + workshop.ExtraImageKey,
+	wsForTmpl := WorkshopForTmpl{
+		Workshop:      ws,
+		ImageURL:      repository.MINIO_URL + ws.ImageKey,
+		ExtraImageURL: repository.MINIO_URL + ws.ExtraImageKey,
 	}
-
-	c.HTML(http.StatusOK, "workshop_detail.html", workshopForTmpl)
+	c.HTML(http.StatusOK, "workshop_detail.html", wsForTmpl)
 }
 
-// GET /order/:id - Страница заказа
 func (h *Handler) GetOrderPage(c *gin.Context) {
 	id, _ := strconv.Atoi(c.Param("id"))
-	order, err := h.Repository.GetOrderByID(uint(id))
+	app, err := h.Repository.GetApplicationByID(uint(id))
 	if err != nil {
-		c.String(http.StatusNotFound, "Заказ не найден")
+		c.String(http.StatusNotFound, "Заявка не найдена")
 		return
 	}
-	if order.Status == "удалён" || order.CreatorID != currentUserID {
+	if app.Status == "удалён" || app.CreatorID != currentUserID {
 		c.String(http.StatusForbidden, "Доступ запрещен")
 		return
 	}
 
-	orderForTmpl := OrderForTmpl{
-		ProductionOrder: order,
-		Items:           make([]OrderWorkshopForTmpl, len(order.Items)),
+	// ИЗМЕНЕНИЕ ЗДЕСЬ
+	appForTmpl := OrderForTmpl{
+		ProductionOrder: app, // <-- Заполняем поле с явным именем
+		Items:           make([]ProductionForTmpl, len(app.Items)),
 	}
-	for i, item := range order.Items {
-		orderForTmpl.Items[i] = OrderWorkshopForTmpl{
-			OrderWorkshop: item,
+	for i, item := range app.Items {
+		appForTmpl.Items[i] = ProductionForTmpl{
+			WorkshopProduction: item,
 			Workshop: WorkshopForTmpl{
-				Workshop: item.Service, // GORM заполняет это поле Service
-				ImageURL: repository.MINIO_URL + item.Service.ImageKey,
+				Workshop: item.Workshop,
+				ImageURL: repository.MINIO_URL + item.Workshop.ImageKey,
 			},
 		}
 	}
-
-	c.HTML(http.StatusOK, "order_detail.html", orderForTmpl)
+	c.HTML(http.StatusOK, "order_detail.html", appForTmpl)
 }
 
-// POST /add-to-order - Добавление мастерской в заказ
 func (h *Handler) AddToOrder(c *gin.Context) {
 	workshopID, _ := strconv.Atoi(c.PostForm("workshop_id"))
-
-	draftOrder, err := h.Repository.FindOrCreateDraftOrder(currentUserID)
-	if err != nil {
-		c.String(http.StatusInternalServerError, "Ошибка при создании заказа")
-		return
-	}
-
-	err = h.Repository.AddWorkshopToOrder(draftOrder.ID, uint(workshopID))
-	if err != nil && !strings.Contains(err.Error(), "duplicate key value") {
-		c.String(http.StatusInternalServerError, "Ошибка при добавлении в заказ")
-		return
-	}
-
+	draftApp, _ := h.Repository.FindOrCreateDraftApplication(currentUserID)
+	_ = h.Repository.AddWorkshopToApplication(draftApp.ID, uint(workshopID))
 	c.Redirect(http.StatusFound, "/")
 }
 
-// POST /delete-order - Логическое удаление заказа
 func (h *Handler) DeleteOrder(c *gin.Context) {
-	orderID, _ := strconv.Atoi(c.PostForm("order_id"))
-	err := h.Repository.DeleteOrderLogically(uint(orderID), currentUserID)
-	if err != nil {
-		c.String(http.StatusNotFound, "Не удалось удалить заказ")
-		return
-	}
+	appID, _ := strconv.Atoi(c.PostForm("application_id"))
+	_ = h.Repository.DeleteApplicationLogically(uint(appID), currentUserID)
 	c.Redirect(http.StatusFound, "/")
 }

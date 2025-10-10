@@ -10,4 +10,4 @@ type Workshop struct {
 	IsDeleted     bool   `gorm:"default:false"`
 }
 
-func (w Workshop) TableName() string { return "services" } // Таблица остается services
+func (w Workshop) TableName() string { return "workshops" }

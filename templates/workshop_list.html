@@ -24,7 +24,7 @@
             </form>
             
             {{ if gt .ItemCount 0 }}
-                <a href="/order/{{ .Order.ID }}" class="cart-link">
+                <a href="/order/{{ .Application.ID }}" class="cart-link"> 
                     <img src="/resources/img/cart.png" alt="Корзина">
                     <span class="cart-count">{{ .ItemCount }}</span>
                 </a>

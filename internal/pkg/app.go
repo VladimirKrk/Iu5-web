@@ -22,15 +22,15 @@ func New(c *config.Config, r *gin.Engine, h *handler.Handler) *App {
 func (a *App) Run() {
 	logrus.Info("Server starting")
 
-	// Регистрируем статику
 	a.Router.LoadHTMLGlob("templates/*")
 	a.Router.Static("/resources", "./resources")
 
-	// Регистрируем роуты
+	// ПРАВИЛЬНЫЕ РОУТЫ
 	a.Router.GET("/", a.Handler.GetWorkshopsPage)
 	a.Router.GET("/workshop/:id", a.Handler.GetWorkshopDetailPage)
-	a.Router.GET("/order/:id", a.Handler.GetOrderPage)
+	a.Router.GET("/order/:id", a.Handler.GetOrderPage) // <-- Этот роут для корзины
 
+	// POST-запросы
 	a.Router.POST("/add-to-order", a.Handler.AddToOrder)
 	a.Router.POST("/delete-order", a.Handler.DeleteOrder)
 

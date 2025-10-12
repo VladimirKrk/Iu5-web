@@ -22,7 +22,14 @@
             <form action="/update-production-name" method="POST" class="filter-bar">
                 <label>Введите название мастерской</label>
                 <input type="hidden" name="application_id" value="{{ .ProductionOrder.ID }}">
-                <input type="text" name="production_name" class="filter-input" placeholder="Введите название">
+                <!-- 
+                    ИЗМЕНЕНИЕ ЗДЕСЬ:
+                    Добавлен атрибут 'value'. Он проверяет, есть ли товары в .Items.
+                    Если есть, он берет WorkshopProductionName из первого товара.
+                    Если нет, value остается пустым, и виден placeholder.
+                -->
+                <input type="text" name="production_name" class="filter-input" placeholder="Введите название" 
+                       value="{{ if .Items }}{{ (index .Items 0).WorkshopProductionName }}{{ end }}">
                 <button type="submit" class="save-button">Сохранить</button>
             </form>
 
@@ -34,10 +41,11 @@
             <div class="cart-items-wrapper">
                 {{ range .Items }}
                 <div class="application-item">
-                    <img src="{{ .Workshop.ImageURL }}" alt="{{ .Workshop.Workshop.Name }}" class="item-image">
+                    <img src="{{ .Workshop.ImageURL }}" alt="{{ .Workshop.Name }}" class="item-image">
                     <div class="item-info">
-                        <span class="item-title">{{ .Workshop.Workshop.Name }}</span>
-                        <p class="item-description">{{ .Workshop.Workshop.Description }}</p>
+                        <span class="item-title">{{ .Workshop.Name }}</span>
+                        <!-- Это поле для описания каждого конкретного товара -->
+                        <p class="item-description">{{ .WorkshopProductionName }}</p>
                     </div>
                     <div class="item-field">
                         <input type="text" value="{{ .FoundDefects }}" readonly>
@@ -45,7 +53,7 @@
                     <div class="item-field">
                         <input type="text" value="{{ .PredictedOutput }}" readonly>
                     </div>
-                    <p class="item-century">{{ .Workshop.Workshop.Century }}</p>
+                    <p class="item-century">{{ .Workshop.Century }}</p>
                 </div>
                 {{ end }}
             </div>

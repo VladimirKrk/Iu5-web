@@ -1,118 +1,146 @@
 package handler
 
 import (
-	"Iu5-web/internal/app/ds"
 	"Iu5-web/internal/app/repository"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/sirupsen/logrus"
 )
 
-const currentUserID = 1
+const currentUserID = 1 // Заглушка для текущего пользователя
 
-type Handler struct{ Repository *repository.Repository }
-
-func NewHandler(r *repository.Repository) *Handler { return &Handler{Repository: r} }
-
-type WorkshopForTmpl struct {
-	ds.Workshop
-	ImageURL      string
-	ExtraImageURL string
+type Handler struct {
+	Repository *repository.Repository
 }
 
-type OrderForTmpl struct {
-	ProductionOrder ds.WorkshopApplication // Поле с явным именем
-	Items           []ProductionForTmpl
+func NewHandler(r *repository.Repository) *Handler {
+	return &Handler{Repository: r}
 }
 
-type ProductionForTmpl struct {
-	ds.WorkshopProduction
-	Workshop WorkshopForTmpl
+// GET /api/workshops
+func (h *Handler) GetWorkshops(c *gin.Context) {
+	workshops, err := h.Repository.GetWorkshops(c.Query("name"))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, workshops)
 }
 
-func (h *Handler) GetWorkshopsPage(c *gin.Context) {
-	searchQuery := c.Query("мастерская")
-	workshops, _ := h.Repository.GetWorkshopsByName(searchQuery)
-	workshopsForTmpl := make([]WorkshopForTmpl, len(workshops))
-	for i, ws := range workshops {
-		workshopsForTmpl[i] = WorkshopForTmpl{
-			Workshop: ws,
-			ImageURL: repository.MINIO_URL + ws.ImageKey,
+// GET /api/workshops/:id
+func (h *Handler) GetWorkshopByID(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "неверный id"})
+		return
+	}
+
+	workshop, err := h.Repository.GetWorkshopByID(uint(id))
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "мастерская не найдена"})
+		return
+	}
+
+	c.JSON(http.StatusOK, workshop)
+}
+
+// GET /api/orders
+func (h *Handler) GetApplications(c *gin.Context) {
+	status := c.Query("status")
+	dateFromString := c.Query("date_from")
+	dateToString := c.Query("date_to")
+
+	var dateFrom, dateTo time.Time
+	var err error
+	if dateFromString != "" {
+		dateFrom, err = time.Parse("2006-01-02", dateFromString)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "неверный формат date_from, используйте YYYY-MM-DD"})
+			return
 		}
 	}
-	draftApp, _ := h.Repository.FindOrCreateDraftApplication(currentUserID)
-	itemCount, _ := h.Repository.GetDraftApplicationItemCount(currentUserID)
-	c.HTML(http.StatusOK, "workshop_list.html", gin.H{
-		"Workshops":   workshopsForTmpl,
-		"Application": draftApp,
-		"ItemCount":   itemCount,
-		"SearchQuery": searchQuery,
+	if dateToString != "" {
+		dateTo, err = time.Parse("2006-01-02", dateToString)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "неверный формат date_to, используйте YYYY-MM-DD"})
+			return
+		}
+	}
+
+	apps, err := h.Repository.GetApplications(status, dateFrom, dateTo)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "не удалось получить заявки"})
+		logrus.Error(err)
+		return
+	}
+
+	c.JSON(http.StatusOK, apps)
+}
+
+// GET /api/cart/icon
+func (h *Handler) GetCartIcon(c *gin.Context) {
+	// Ищем или создаем черновик для текущего пользователя
+	draftApp, err := h.Repository.FindOrCreateDraftApplication(currentUserID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "ошибка получения корзины"})
+		logrus.Error(err)
+		return
+	}
+
+	// Считаем количество товаров в этом черновике
+	itemCount, err := h.Repository.GetDraftApplicationItemCount(currentUserID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "ошибка подсчета товаров"})
+		logrus.Error(err)
+		return
+	}
+
+	// Возвращаем результат в формате JSON
+	c.JSON(http.StatusOK, gin.H{
+		"application_id": draftApp.ID,
+		"item_count":     itemCount,
 	})
 }
 
-func (h *Handler) GetWorkshopDetailPage(c *gin.Context) {
-	id, _ := strconv.Atoi(c.Param("id"))
-	ws, err := h.Repository.GetWorkshopByID(uint(id))
+// DELETE /api/orders/:id
+func (h *Handler) DeleteApplication(c *gin.Context) {
+	// Получаем id из URL
+	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.String(http.StatusNotFound, "Страница не найдена")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "неверный id"})
 		return
 	}
-	wsForTmpl := WorkshopForTmpl{
-		Workshop:      ws,
-		ImageURL:      repository.MINIO_URL + ws.ImageKey,
-		ExtraImageURL: repository.MINIO_URL + ws.ExtraImageKey,
-	}
-	c.HTML(http.StatusOK, "workshop_detail.html", wsForTmpl)
-}
 
-func (h *Handler) GetOrderPage(c *gin.Context) {
-	id, _ := strconv.Atoi(c.Param("id"))
-	app, err := h.Repository.GetApplicationByID(uint(id))
+	// Вызываем метод репозитория для логического удаления
+	// Передаем ID заявки и ID текущего пользователя для проверки прав
+	err = h.Repository.DeleteApplicationLogically(uint(id), currentUserID)
 	if err != nil {
-		c.Redirect(http.StatusFound, "/")
-		return
-	}
-	if app.Status == "удалён" || app.CreatorID != currentUserID {
-		c.Redirect(http.StatusFound, "/")
-		return
-	}
-	appForTmpl := OrderForTmpl{
-		ProductionOrder: app, // Используем явное имя
-		Items:           make([]ProductionForTmpl, len(app.Items)),
-	}
-	for i, item := range app.Items {
-		appForTmpl.Items[i] = ProductionForTmpl{
-			WorkshopProduction: item,
-			Workshop: WorkshopForTmpl{
-				Workshop: item.Workshop,
-				ImageURL: repository.MINIO_URL + item.Workshop.ImageKey,
-			},
+		// if метод вернул gorm.ErrRecordNotFound,then заявка не найдена или не принадлежит пользователю
+		if err.Error() == "record not found" {
+			c.JSON(http.StatusNotFound, gin.H{"error": "заявка не найдена или у вас нет прав на ее удаление"})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "не удалось удалить заявку"})
 		}
+		logrus.Error(err)
+		return
 	}
-	c.HTML(http.StatusOK, "order_detail.html", appForTmpl)
+
+	c.Status(http.StatusNoContent)
 }
 
-func (h *Handler) AddToOrder(c *gin.Context) {
-	workshopID, _ := strconv.Atoi(c.PostForm("workshop_id"))
-	draftApp, _ := h.Repository.FindOrCreateDraftApplication(currentUserID)
-	_ = h.Repository.AddWorkshopToApplication(draftApp.ID, uint(workshopID))
-	c.Redirect(http.StatusFound, "/")
-}
-
-func (h *Handler) DeleteOrder(c *gin.Context) {
-	appID, _ := strconv.Atoi(c.PostForm("application_id"))
-	_ = h.Repository.DeleteApplicationLogically(uint(appID), currentUserID)
-	c.Redirect(http.StatusFound, "/")
-}
-
-func (h *Handler) UpdateProductionName(c *gin.Context) {
-	appID_str := c.PostForm("application_id")
-	newName := c.PostForm("production_name")
-
-	appID, _ := strconv.Atoi(appID_str)
-
-	_ = h.Repository.UpdateProductionName(uint(appID), newName)
-
-	c.Redirect(http.StatusFound, "/workshop_production/"+appID_str)
-}
+func (h *Handler) CreateWorkshop(c *gin.Context)      { /* TODO */ }
+func (h *Handler) UpdateWorkshop(c *gin.Context)      { /* TODO */ }
+func (h *Handler) DeleteWorkshop(c *gin.Context)      { /* TODO */ }
+func (h *Handler) UploadWorkshopImage(c *gin.Context) { /* TODO */ }
+func (h *Handler) GetApplicationByID(c *gin.Context)  { /* TODO */ }
+func (h *Handler) UpdateApplication(c *gin.Context)   { /* TODO */ }
+func (h *Handler) FormApplication(c *gin.Context)     { /* TODO */ }
+func (h *Handler) CompleteApplication(c *gin.Context) { /* TODO */ }
+func (h *Handler) AddWorkshopToCart(c *gin.Context)   { /* TODO */ }
+func (h *Handler) UpdateCartItem(c *gin.Context)      { /* TODO */ }
+func (h *Handler) DeleteCartItem(c *gin.Context)      { /* TODO */ }
+func (h *Handler) RegisterUser(c *gin.Context)        { /* TODO */ }
+func (h *Handler) GetUserMe(c *gin.Context)           { /* TODO */ }

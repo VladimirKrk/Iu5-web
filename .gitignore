@@ -9,3 +9,4 @@ minio-data/
 
 # Mac files
 .DS_Store
+.env

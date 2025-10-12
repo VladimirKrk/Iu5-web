@@ -20,20 +20,45 @@ func New(c *config.Config, r *gin.Engine, h *handler.Handler) *App {
 }
 
 func (a *App) Run() {
-	logrus.Info("Server starting")
+	logrus.Info("Starting server")
 
-	a.Router.LoadHTMLGlob("templates/*")
-	a.Router.Static("/resources", "./resources")
+	api := a.Router.Group("/api")
+	{
+		// Роуты для Мастерских
+		workshops := api.Group("/workshops")
+		{
+			workshops.GET("", a.Handler.GetWorkshops)
+			workshops.GET("/:id", a.Handler.GetWorkshopByID)
+			workshops.POST("", a.Handler.CreateWorkshop)
+			workshops.PUT("/:id", a.Handler.UpdateWorkshop)
+			workshops.DELETE("/:id", a.Handler.DeleteWorkshop)
+			workshops.POST("/:id/image", a.Handler.UploadWorkshopImage)
+		}
 
-	// GET-запросы
-	a.Router.GET("/", a.Handler.GetWorkshopsPage)
-	a.Router.GET("/workshop/:id", a.Handler.GetWorkshopDetailPage)
-	a.Router.GET("/workshop_production/:id", a.Handler.GetOrderPage)
+		// Роуты для Заказов
+		orders := api.Group("/orders")
+		{
+			orders.GET("", a.Handler.GetApplications)
+			orders.GET("/:id", a.Handler.GetApplicationByID)
+			orders.PUT("/:id", a.Handler.UpdateApplication)
+			orders.PUT("/:id/form", a.Handler.FormApplication)
+			orders.PUT("/:id/complete", a.Handler.CompleteApplication)
+			orders.DELETE("/:id", a.Handler.DeleteApplication)
+		}
 
-	// POST-запросы
-	a.Router.POST("/add-to-order", a.Handler.AddToOrder)
-	a.Router.POST("/delete-order", a.Handler.DeleteOrder)
-	a.Router.POST("/update-production-name", a.Handler.UpdateProductionName)
+		// Роуты для Корзины
+		cart := api.Group("/cart")
+		{
+			cart.GET("/icon", a.Handler.GetCartIcon)
+			cart.POST("/workshops", a.Handler.AddWorkshopToCart)
+			cart.PUT("/items", a.Handler.UpdateCartItem)
+			cart.DELETE("/items", a.Handler.DeleteCartItem)
+		}
+
+		// Роуты для Пользователей
+		api.POST("/register", a.Handler.RegisterUser)
+		api.GET("/users/me", a.Handler.GetUserMe)
+	}
 
 	serverAddress := fmt.Sprintf("%s:%d", a.Config.ServiceHost, a.Config.ServicePort)
 	if err := a.Router.Run(serverAddress); err != nil {

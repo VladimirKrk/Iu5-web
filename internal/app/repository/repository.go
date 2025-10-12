@@ -33,52 +33,68 @@ func New(dsn string) (*Repository, error) {
 	return &Repository{db: db}, nil
 }
 
-func (r *Repository) GetAllWorkshops() ([]ds.Workshop, error) {
+// Методы для Мастерских (Workshops)
+func (r *Repository) GetWorkshops(name string) ([]ds.Workshop, error) {
 	var workshops []ds.Workshop
-	result := r.db.Where("is_deleted = ?", false).Find(&workshops)
-	return workshops, result.Error
-}
-
-func (r *Repository) GetWorkshopsByName(name string) ([]ds.Workshop, error) {
-	var workshops []ds.Workshop
-	result := r.db.Where("name ILIKE ? AND is_deleted = ?", "%"+name+"%", false).Find(&workshops)
-	return workshops, result.Error
+	query := r.db.Where("is_deleted = ?", false)
+	if name != "" {
+		query = query.Where("name ILIKE ?", "%"+name+"%")
+	}
+	err := query.Find(&workshops).Error
+	return workshops, err
 }
 
 func (r *Repository) GetWorkshopByID(id uint) (ds.Workshop, error) {
 	var workshop ds.Workshop
-	result := r.db.First(&workshop, id)
-	return workshop, result.Error
+	err := r.db.First(&workshop, id).Error
+	return workshop, err
+}
+
+func (r *Repository) CreateWorkshop(workshop *ds.Workshop) error {
+	return r.db.Create(workshop).Error
+}
+
+func (r *Repository) UpdateWorkshop(workshop *ds.Workshop) error {
+	return r.db.Save(workshop).Error
+}
+
+func (r *Repository) DeleteWorkshop(id uint) error {
+	return r.db.Delete(&ds.Workshop{}, id).Error
+}
+
+// Методы для Заказов (Applications/Orders)
+func (r *Repository) GetApplications(status string, dateFrom, dateTo time.Time) ([]ds.WorkshopApplication, error) {
+	var apps []ds.WorkshopApplication
+	query := r.db.Where("status NOT IN (?, ?)", "черновик", "удалён")
+	if status != "" {
+		query = query.Where("status = ?", status)
+	}
+	if !dateFrom.IsZero() && !dateTo.IsZero() {
+		query = query.Where("formed_at BETWEEN ? AND ?", dateFrom, dateTo)
+	}
+	err := query.Preload("Creator").Preload("Moderator").Find(&apps).Error
+	return apps, err
 }
 
 func (r *Repository) GetApplicationByID(id uint) (ds.WorkshopApplication, error) {
 	var app ds.WorkshopApplication
-	result := r.db.Preload("Items.Workshop").First(&app, id)
-	return app, result.Error
+	err := r.db.Preload("Items.Workshop").Preload("Creator").Preload("Moderator").First(&app, id).Error
+	return app, err
 }
 
 func (r *Repository) FindOrCreateDraftApplication(userID uint) (ds.WorkshopApplication, error) {
 	var app ds.WorkshopApplication
 	err := r.db.Where("creator_id = ? AND status = ?", userID, "черновик").First(&app).Error
 	if err == gorm.ErrRecordNotFound {
-		newApp := ds.WorkshopApplication{
-			Status:    "черновик",
-			CreatedAt: time.Now(),
-			CreatorID: userID,
-		}
+		newApp := ds.WorkshopApplication{Status: "черновик", CreatedAt: time.Now(), CreatorID: userID}
 		err = r.db.Create(&newApp).Error
 		return newApp, err
 	}
 	return app, err
 }
 
-func (r *Repository) AddWorkshopToApplication(appID, workshopID uint) error {
-	item := ds.WorkshopProduction{
-		ApplicationID: appID,
-		WorkshopID:    workshopID,
-	}
-	result := r.db.Create(&item)
-	return result.Error
+func (r *Repository) UpdateApplication(app *ds.WorkshopApplication) error {
+	return r.db.Save(app).Error
 }
 
 func (r *Repository) DeleteApplicationLogically(appID, userID uint) error {
@@ -86,6 +102,28 @@ func (r *Repository) DeleteApplicationLogically(appID, userID uint) error {
 	if result.RowsAffected == 0 {
 		return gorm.ErrRecordNotFound
 	}
+	return result.Error
+}
+
+// Методы для Позиций Заказа (Order Items)
+func (r *Repository) AddWorkshopToApplication(appID, workshopID uint) (ds.WorkshopProduction, error) {
+	item := ds.WorkshopProduction{ApplicationID: appID, WorkshopID: workshopID}
+	err := r.db.Create(&item).Error
+	return item, err
+}
+
+func (r *Repository) GetApplicationItem(appID, workshopID uint) (ds.WorkshopProduction, error) {
+	var item ds.WorkshopProduction
+	err := r.db.Where("application_id = ? AND workshop_id = ?", appID, workshopID).First(&item).Error
+	return item, err
+}
+
+func (r *Repository) UpdateApplicationItem(item *ds.WorkshopProduction) error {
+	return r.db.Save(item).Error
+}
+
+func (r *Repository) DeleteApplicationItem(appID, workshopID uint) error {
+	result := r.db.Where("application_id = ? AND workshop_id = ?", appID, workshopID).Delete(&ds.WorkshopProduction{})
 	return result.Error
 }
 
@@ -103,16 +141,7 @@ func (r *Repository) GetDraftApplicationItemCount(userID uint) (int64, error) {
 	return count, err
 }
 
-func (r *Repository) UpdateProductionName(appID uint, newName string) error {
-	var firstItem ds.WorkshopProduction
-
-	// Находим первую по ID запись, связанную с этой заявкой
-	err := r.db.Where("application_id = ?", appID).Order("id asc").First(&firstItem).Error
-	if err != nil {
-		return err // Возвращаем ошибку, если в заказе нет товаров
-	}
-
-	// Обновляем только одно поле для этой найденной записи
-	result := r.db.Model(&firstItem).Update("workshop_production_name", newName)
-	return result.Error
+// Методы для Пользователей (Users)
+func (r *Repository) CreateUser(user *ds.User) error {
+	return r.db.Create(user).Error
 }

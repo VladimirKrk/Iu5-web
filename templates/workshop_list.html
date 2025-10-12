@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Исторические мастерские</title>
+    <link rel="stylesheet" href="/resources/styles/main_style.css">
+</head>
+<body>
+
+    <header class="header">
+        <div class="container header-container">
+            <a href="/" class="logo">
+                <img src="/resources/img/logo.png" alt="VLK Logo">
+            </a>
+        </div>
+    </header>
+
+    <div class="search-section">
+        <div class="container">
+            <form action="/" method="GET" class="search-form">
+                <input type="text" name="мастерская" class="search-input" value="{{ .SearchQuery }}">
+                <button type="submit" class="search-button"></button>
+            </form>
+            
+            {{ if gt .ItemCount 0 }}
+                <a href="/workshop_production/{{ .Application.ID }}" class="cart-link">
+                    <img src="/resources/img/cart.png" alt="Корзина">
+                    <span class="cart-count">{{ .ItemCount }}</span>
+                </a>
+            {{ else }}
+                <div class="cart-link cart-link-disabled">
+                    <img src="/resources/img/cart.png" alt="Корзина">
+                    <span class="cart-count">0</span>
+                </div>
+            {{ end }}
+        </div>
+    </div>
+
+    <main class="main">
+        <div class="container">
+            <div class="card-grid">
+                {{ range .Workshops }}
+                <div class="card">
+                    <img src="{{ .ImageURL }}" alt="{{ .Workshop.Name }}" class="card-image">
+                    <div class="card-body">
+                        <div class="card-content">
+                            <h3 class="card-title">{{ .Workshop.Name }}</h3>
+                        </div>
+                        <div class="card-footer">
+                            <p class="card-century">{{ .Workshop.Century }}</p>
+                            <a href="/workshop/{{ .Workshop.ID }}" class="card-button">Подробнее</a>
+                            <form action="/add-to-order" method="POST">
+                                <input type="hidden" name="workshop_id" value="{{ .Workshop.ID }}">
+                                <button type="submit" class="card-button card-button-primary">В корзину</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                {{ else }}
+                    <p>Мастерские по вашему запросу не найдены.</p>
+                {{ end }}
+            </div>
+        </div>
+    </main>
+
+</body>
+</html>

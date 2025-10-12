@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Заказ №{{ .ProductionOrder.ID }}</title>
+    <link rel="stylesheet" href="/resources/styles/order_style.css">
+</head>
+<body>
+
+    <header class="header">
+        <div class="container header-container">
+            <a href="/" class="logo">
+                <img src="/resources/img/logo.png" alt="VLK Logo">
+            </a>
+        </div>
+    </header>
+
+    <main class="main">
+        <div class="container">
+            
+            <form action="/update-production-name" method="POST" class="filter-bar">
+                <label>Введите название мастерской</label>
+                <input type="hidden" name="application_id" value="{{ .ProductionOrder.ID }}">
+                <!-- 
+                    ИЗМЕНЕНИЕ ЗДЕСЬ:
+                    Добавлен атрибут 'value'. Он проверяет, есть ли товары в .Items.
+                    Если есть, он берет WorkshopProductionName из первого товара.
+                    Если нет, value остается пустым, и виден placeholder.
+                -->
+                <input type="text" name="production_name" class="filter-input" placeholder="Введите название" 
+                       value="{{ if .Items }}{{ (index .Items 0).WorkshopProductionName }}{{ end }}">
+                <button type="submit" class="save-button">Сохранить</button>
+            </form>
+
+            <div class="application-header">
+                <div class="header-label">введите количество найденного брака</div>
+                <div class="header-label">прогнозируемый объем выпуска в год</div>
+            </div>
+
+            <div class="cart-items-wrapper">
+                {{ range .Items }}
+                <div class="application-item">
+                    <img src="{{ .Workshop.ImageURL }}" alt="{{ .Workshop.Name }}" class="item-image">
+                    <div class="item-info">
+                        <span class="item-title">{{ .Workshop.Name }}</span>
+                        <!-- Это поле для описания каждого конкретного товара -->
+                        <p class="item-description">{{ .WorkshopProductionName }}</p>
+                    </div>
+                    <div class="item-field">
+                        <input type="text" value="{{ .FoundDefects }}" readonly>
+                    </div>
+                    <div class="item-field">
+                        <input type="text" value="{{ .PredictedOutput }}" readonly>
+                    </div>
+                    <p class="item-century">{{ .Workshop.Century }}</p>
+                </div>
+                {{ end }}
+            </div>
+            
+            <div class="application-summary">
+                {{ len .Items }} заявки в корзине
+            </div>
+            
+            <form action="/delete-order" method="POST" style="text-align: center; margin-top: 30px;">
+                <input type="hidden" name="application_id" value="{{ .ProductionOrder.ID }}">
+                <button type="submit" style="padding: 10px 20px; font-size: 16px; cursor: pointer;">Удалить заказ</button>
+            </form>
+        </div>
+    </main>
+
+</body>
+</html>

@@ -1,0 +1,231 @@
+/* resources/styles/main_style.css */
+
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
+
+/* Общие стили */
+body {
+    margin: 0;
+    font-family: 'Roboto', sans-serif;
+    font-weight: 400;
+    background-color: #FFFFFF;
+    color: #000000;
+}
+
+.container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+a {
+    text-decoration: none;
+    color: inherit;
+}
+
+/* Header */
+.header {
+    background-color: #FFFFFF;
+    padding: 15px 0;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.header-container {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+}
+
+.logo img {
+    height: 18px;
+    width: 55px;
+    display: block;
+}
+
+/* Секция поиска и корзины */
+.search-section {
+    background-color: #FFFFFF;
+    padding: 20px 0;
+    border-bottom: 1px solid #E9E9E9;
+}
+
+.search-section .container {
+    position: relative;
+    display: flex;
+    justify-content: center;
+}
+
+.search-form {
+    width: 419px;
+    height: 32px;
+    border-radius: 16px;
+    background-color: #E9E9E9;
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.search-input {
+    width: 100%;
+    height: 100%;
+    padding: 0 15px 0 40px;
+    border: none;
+    background-color: transparent;
+    outline: none;
+    font-size: 16px;
+    font-family: 'Roboto', sans-serif;
+}
+
+.search-button {
+    position: absolute;
+    left: 12px;
+    bottom: 5px;
+    width: 20px;
+    height: 20px;
+    border: none;
+    background-color: transparent;
+    padding: 0;
+    cursor: pointer;
+    background-image: url('/resources/img/search.png');
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: contain;
+}
+
+.cart-link {
+    position: absolute; /* Позиционируем относительно .container */
+    right: 83px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: block;
+}
+
+.cart-link img {
+    width: 23px;
+    height: 20px;
+    display: block;
+}
+
+.cart-link-disabled {
+    cursor: default;
+    opacity: 0.5;
+}
+
+.cart-count {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background-color: #000000;
+    color: #FFFFFF;
+    border-radius: 50%;
+    min-width: 18px;
+    height: 18px;
+    font-size: 12px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    padding: 0 4px;
+}
+
+/* Main content */
+.main {
+    padding: 40px 0;
+}
+
+.card-grid {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 24px;
+}
+
+/* Стили для карточки */
+.card {
+    width: 412px;
+    border-radius: 15px;
+    background-color: #E9E9E9;
+    overflow: hidden;
+    border: none;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    display: flex;
+    flex-direction: column;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+}
+
+.card-image {
+    width: 353px;
+    height: 353px;
+    margin-top: 20px;
+    margin-left: auto;
+    margin-right: auto;
+    object-fit: cover;
+    display: block;
+}
+
+.card-body {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    flex-grow: 1;
+}
+
+
+.card-title {
+    margin: 0 0 15px 0;
+    font-size: 18px;
+    font-weight: 400;
+}
+
+/* "Подвал" карточки */
+.card-footer {
+    display: flex;
+    align-items: center;
+    gap: 10px; /* Зазор между всеми элементами, включая кнопки */
+}
+
+.card-century {
+    margin: 0;
+    font-size: 14px;
+    /* ВОТ "МАГИЯ": Этот элемент забирает все свободное пространство слева от себя,
+       прижимая все остальные элементы (кнопки) к правому краю. */
+    margin-right: auto;
+}
+
+/* Общий стиль для обеих кнопок */
+.card-button {
+    width: 81px;
+    height: 44px;
+    border-radius: 22px;
+    font-weight: 700;
+    font-size: 14px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border: 1px solid #DDDDDD;
+    box-sizing: border-box;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    background-color: #FFFFFF;
+    color: #000000;
+}
+
+/* Стиль для кнопки "В корзину" */
+.card-button-primary {
+    background-color: #FFFFFF;
+    color: #000000;
+    border-color: #DDDDDD;
+}
+
+/* Сброс стилей для формы */
+.card-footer form {
+    margin: 0;
+}

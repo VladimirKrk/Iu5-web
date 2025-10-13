@@ -19,19 +19,24 @@
     <main class="main">
         <div class="container">
             
-            <form action="/update-production-name" method="POST" class="filter-bar">
+            <div class="filter-bar">
                 <label>Введите название мастерской</label>
-                <input type="hidden" name="application_id" value="{{ .ProductionOrder.ID }}">
+                <input 
+                    type="text" 
+                    id="productionNameInput" 
+                    class="filter-input" 
+                    placeholder="Введите название" 
+                    value="{{ .ProductionOrder.ProductionName }}">
                 <!-- 
-                    ИЗМЕНЕНИЕ ЗДЕСЬ:
-                    Добавлен атрибут 'value'. Он проверяет, есть ли товары в .Items.
-                    Если есть, он берет WorkshopProductionName из первого товара.
-                    Если нет, value остается пустым, и виден placeholder.
+                    ИЗМЕНЕНИЕ №1:
+                    Убран 'onclick'. Вместо него добавлен 'id' и 'data-order-id'
                 -->
-                <input type="text" name="production_name" class="filter-input" placeholder="Введите название" 
-                       value="{{ if .Items }}{{ (index .Items 0).WorkshopProductionName }}{{ end }}">
-                <button type="submit" class="save-button">Сохранить</button>
-            </form>
+                <button 
+                    type="button" 
+                    id="saveButton"
+                    data-order-id="{{ .ProductionOrder.ID }}"
+                    class="save-button">Сохранить</button>
+            </div>
 
             <div class="application-header">
                 <div class="header-label">введите количество найденного брака</div>
@@ -44,8 +49,7 @@
                     <img src="{{ .Workshop.ImageURL }}" alt="{{ .Workshop.Name }}" class="item-image">
                     <div class="item-info">
                         <span class="item-title">{{ .Workshop.Name }}</span>
-                        <!-- Это поле для описания каждого конкретного товара -->
-                        <p class="item-description">{{ .WorkshopProductionName }}</p>
+                        <p class="item-description">{{ .Workshop.Description }}</p>
                     </div>
                     <div class="item-field">
                         <input type="text" value="{{ .FoundDefects }}" readonly>
@@ -67,6 +71,47 @@
                 <button type="submit" style="padding: 10px 20px; font-size: 16px; cursor: pointer;">Удалить заказ</button>
             </form>
         </div>
+        
+        <!-- 
+            ИЗМЕНЕНИЕ №2:
+            JavaScript теперь сам находит кнопку и назначает ей действие
+        -->
+        <script>
+            // Эта функция остается без изменений
+            function updateProductionName(orderId) {
+                const newName = document.getElementById('productionNameInput').value;
+                fetch(`/api/orders/${orderId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ production_name: newName }),
+                })
+                .then(response => {
+                    if (response.ok) {
+                        window.location.reload();
+                    } else {
+                        alert('Не удалось сохранить название!');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Произошла сетевая ошибка.');
+                });
+            }
+
+            // Новый код, который "активирует" кнопку
+            document.addEventListener('DOMContentLoaded', function() {
+                const saveBtn = document.getElementById('saveButton');
+                if (saveBtn) {
+                    saveBtn.addEventListener('click', function() {
+                        const orderId = this.dataset.orderId; // Читаем ID из data-атрибута
+                        updateProductionName(orderId);
+                    });
+                }
+            });
+        </script>
+
     </main>
 
 </body>

@@ -1,9 +1,11 @@
 package handler
 
 import (
+	"Iu5-web/internal/app/ds"
 	"Iu5-web/internal/app/repository"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -131,16 +133,242 @@ func (h *Handler) DeleteApplication(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
-func (h *Handler) CreateWorkshop(c *gin.Context)      { /* TODO */ }
+// POST /api/workshops то есть делаем новюу мастерскую
+func (h *Handler) CreateWorkshop(c *gin.Context) {
+	var workshop ds.Workshop
+	// Парсим JSON из тела запроса в нашу структуру
+	if err := c.ShouldBindJSON(&workshop); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "неверные входные данные: " + err.Error()})
+		return
+	}
+
+	// Вызываем метод для сохранения в БД
+	if err := h.Repository.CreateWorkshop(&workshop); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "не удалось создать мастерскую"})
+		logrus.Error(err)
+		return
+	}
+
+	// Возвращаем созданный объект и статус 201 Created
+	c.JSON(http.StatusCreated, workshop)
+}
+
+// понадобится Minio пока стоит заглушка, просто обновляет имя файла в БД.
+// POST /api/workshops/:id/image
+func (h *Handler) UploadWorkshopImage(c *gin.Context) {
+	// Получаем ID из URL
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "неверный id"})
+		return
+	}
+
+	// Находим мастерскую
+	workshop, err := h.Repository.GetWorkshopByID(uint(id))
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "мастерская не найдена"})
+		return
+	}
+
+	// Получаем файл из формы
+	_, err = c.FormFile("image") // 'image' - это имя поля в multipart/form-data
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "файл не загружен"})
+		return
+	}
+
+	imageKey := "tulskiy_zavod.png"
+
+	// Обновляем запись в БД
+	workshop.ImageKey = imageKey
+	if err = h.Repository.UpdateWorkshop(&workshop); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "не удалось обновить мастерскую"})
+		logrus.Error(err)
+		return
+	}
+
+	c.JSON(http.StatusOK, workshop)
+}
+
+// POST /api/cart/workshops
+func (h *Handler) AddWorkshopToCart(c *gin.Context) {
+	// Ожидаем, что ID мастерской будет передан в теле запроса в виде form-data
+	workshopIDStr := c.PostForm("workshop_id")
+	workshopID, err := strconv.Atoi(workshopIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "неверный workshop_id"})
+		return
+	}
+
+	// аходим или создаем заявку-черновик для текущего пользователя
+	draftApp, err := h.Repository.FindOrCreateDraftApplication(currentUserID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "не удалось найти или создать заявку"})
+		logrus.Error(err)
+		return
+	}
+
+	// Добавляем мастерскую в эту заявку
+	item, err := h.Repository.AddWorkshopToApplication(draftApp.ID, uint(workshopID))
+	if err != nil {
+		// Обрабатываем ошибку, если такая услуга уже есть в заявке
+		if strings.Contains(err.Error(), "unique constraint") {
+			c.JSON(http.StatusConflict, gin.H{"error": "эта мастерская уже добавлена в заявку"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "не удалось добавить мастерскую в заявку"})
+		logrus.Error(err)
+		return
+	}
+
+	// Возвращаем успешный ответ с информацией о созданной связи
+	c.JSON(http.StatusCreated, item)
+}
+
+// GET /api/orders/:id
+func (h *Handler) GetApplicationByID(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "неверный id"})
+		return
+	}
+
+	app, err := h.Repository.GetApplicationByID(uint(id))
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "заявка не найдена"})
+		logrus.Error(err)
+		return
+	}
+
+	// Проверяем, что заявка не удалена и принадлежит текущему пользователю
+	if app.Status == "удалён" || app.CreatorID != currentUserID {
+		// Показываем ошибку 404
+		c.JSON(http.StatusNotFound, gin.H{"error": "заявка не найдена"})
+		return
+	}
+
+	c.JSON(http.StatusOK, app)
+}
+
+// PUT /api/cart/items
+func (h *Handler) UpdateCartItem(c *gin.Context) {
+	// Ожидаем JSON с данными для обновления
+	var updateData struct {
+		WorkshopID      uint   `json:"workshop_id"`
+		FoundDefects    int    `json:"found_defects"`
+		PredictedOutput string `json:"predicted_output"`
+	}
+	if err := c.ShouldBindJSON(&updateData); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "неверные входные данные"})
+		return
+	}
+
+	// Находим черновик текущего пользователя
+	draftApp, err := h.Repository.FindOrCreateDraftApplication(currentUserID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "не удалось найти заявку"})
+		return
+	}
+
+	// Находим конкретную позицию в заказе по ID заявки и ID мастерской
+	item, err := h.Repository.GetApplicationItem(draftApp.ID, updateData.WorkshopID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "товар в корзине не найден"})
+		return
+	}
+
+	// Обновляем поля
+	item.FoundDefects = updateData.FoundDefects
+	item.PredictedOutput = updateData.PredictedOutput
+
+	// Сохраняем изменения в БД
+	if err := h.Repository.UpdateApplicationItem(&item); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "не удалось обновить товар"})
+		return
+	}
+
+	c.JSON(http.StatusOK, item)
+}
+
+func (h *Handler) UpdateApplication(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "неверный id"})
+		return
+	}
+
+	// Структура для парсинга JSON
+	var updateData struct {
+		ProductionName string `json:"production_name"`
+	}
+	if err := c.ShouldBindJSON(&updateData); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "неверные входные данные"})
+		return
+	}
+
+	app, err := h.Repository.GetApplicationByID(uint(id))
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "заявка не найдена"})
+		return
+	}
+
+	if app.CreatorID != currentUserID || app.Status != "черновик" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "нет прав для изменения этой заявки"})
+		return
+	}
+
+	// Обновляем новое поле
+	app.ProductionName = updateData.ProductionName
+
+	if err := h.Repository.UpdateApplication(&app); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "не удалось обновить заявку"})
+		return
+	}
+
+	c.JSON(http.StatusOK, app)
+}
+
+// PUT /api/orders/:id/form
+func (h *Handler) FormApplication(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "неверный id"})
+		return
+	}
+
+	app, err := h.Repository.GetApplicationByID(uint(id))
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "заявка не найдена"})
+		return
+	}
+
+	// только создатель может формировать свой черновик
+	if app.CreatorID != currentUserID || app.Status != "черновик" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "можно сформировать только свою заявку в статусе 'черновик'"})
+		return
+	}
+
+	if len(app.Items) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "нельзя сформировать пустую заявку"})
+		return
+	}
+
+	// Меняем статус и ставим дату формирования
+	app.Status = "сформирован"
+	now := time.Now()
+	app.FormedAt = &now // &now создает указатель на текущее время
+
+	if err := h.Repository.UpdateApplication(&app); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "не удалось сформировать заявку"})
+		return
+	}
+
+	c.JSON(http.StatusOK, app)
+}
+
 func (h *Handler) UpdateWorkshop(c *gin.Context)      { /* TODO */ }
 func (h *Handler) DeleteWorkshop(c *gin.Context)      { /* TODO */ }
-func (h *Handler) UploadWorkshopImage(c *gin.Context) { /* TODO */ }
-func (h *Handler) GetApplicationByID(c *gin.Context)  { /* TODO */ }
-func (h *Handler) UpdateApplication(c *gin.Context)   { /* TODO */ }
-func (h *Handler) FormApplication(c *gin.Context)     { /* TODO */ }
 func (h *Handler) CompleteApplication(c *gin.Context) { /* TODO */ }
-func (h *Handler) AddWorkshopToCart(c *gin.Context)   { /* TODO */ }
-func (h *Handler) UpdateCartItem(c *gin.Context)      { /* TODO */ }
 func (h *Handler) DeleteCartItem(c *gin.Context)      { /* TODO */ }
 func (h *Handler) RegisterUser(c *gin.Context)        { /* TODO */ }
 func (h *Handler) GetUserMe(c *gin.Context)           { /* TODO */ }

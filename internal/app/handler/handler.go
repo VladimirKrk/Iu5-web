@@ -65,85 +65,93 @@ func (h *Handler) CreateWorkshop(c *gin.Context) {
 	c.JSON(http.StatusCreated, workshop)
 }
 
+// PUT /api/workshops/:id
 func (h *Handler) UpdateWorkshop(c *gin.Context) {
-	id, _ := strconv.Atoi(c.Param("id"))
-	workshop, err := h.Repository.GetWorkshopByID(uint(id))
-	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "мастерская не найдена"})
-		return
-	}
-	if err := c.ShouldBindJSON(&workshop); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "неверные входные данные"})
-		return
-	}
-	if err := h.Repository.UpdateWorkshop(&workshop); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "не удалось обновить мастерскую"})
-		return
-	}
-	c.JSON(http.StatusOK, workshop)
-}
-
-func (h *Handler) DeleteWorkshop(c *gin.Context) {
-	id, _ := strconv.Atoi(c.Param("id"))
-	// Здесь также должна быть логика удаления картинки из Minio
-	if err := h.Repository.DeleteWorkshop(uint(id)); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "не удалось удалить мастерскую"})
-		return
-	}
-	c.Status(http.StatusNoContent)
-}
-
-func (h *Handler) UploadWorkshopImage(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "неверный id"})
 		return
 	}
-
+	// Сначала находим существующую мастерскую, чтобы убедиться, что она есть
 	workshop, err := h.Repository.GetWorkshopByID(uint(id))
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "мастерская не найдена"})
 		return
 	}
+	// Парсим JSON из тела запроса поверх существующего объекта
+	if err := c.ShouldBindJSON(&workshop); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "неверные входные данные"})
+		return
+	}
+	// GORM метод Save обновит все поля, включая измененные
+	if err := h.Repository.UpdateWorkshop(&workshop); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "не удалось обновить мастерскую"})
+		logrus.Error(err)
+		return
+	}
+	c.JSON(http.StatusOK, workshop)
+}
 
+// DELETE /api/workshops/:id
+func (h *Handler) DeleteWorkshop(c *gin.Context) {
+	id, _ := strconv.Atoi(c.Param("id"))
+	workshop, err := h.Repository.GetWorkshopByID(uint(id))
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "мастерская не найдена для удаления"})
+		return
+	}
+	if err := h.Repository.DeleteWorkshop(uint(id)); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "не удалось удалить мастерскую"})
+		return
+	}
+	//работаем с минио для удаления изображения
+	bucketName := os.Getenv("MINIO_BUCKET_NAME")
+	if workshop.ImageKey != "" {
+		_ = h.MinioClient.RemoveObject(context.Background(), bucketName, workshop.ImageKey, minio.RemoveObjectOptions{})
+	}
+	if workshop.ExtraImageKey != "" {
+		_ = h.MinioClient.RemoveObject(context.Background(), bucketName, workshop.ExtraImageKey, minio.RemoveObjectOptions{})
+	}
+
+	c.Status(http.StatusNoContent)
+}
+
+func (h *Handler) UploadWorkshopImage(c *gin.Context) {
+	id, _ := strconv.Atoi(c.Param("id"))
+	workshop, err := h.Repository.GetWorkshopByID(uint(id))
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "мастерская не найдена"})
+		return
+	}
 	file, err := c.FormFile("image")
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "файл не загружен: " + err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "файл не загружен"})
 		return
 	}
 
-	// Генерируем уникальное имя для файла
-	fileExt := filepath.Ext(file.Filename)
-	imageKey := uuid.New().String() + fileExt
-
-	// Открываем содержимое файла
-	fileContent, err := file.Open()
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "не удалось прочитать файл"})
-		return
+	bucketName := os.Getenv("MINIO_BUCKET_NAME")
+	if workshop.ImageKey != "" {
+		_ = h.MinioClient.RemoveObject(context.Background(), bucketName, workshop.ImageKey, minio.RemoveObjectOptions{})
 	}
+
+	imageKey := uuid.New().String() + filepath.Ext(file.Filename)
+	fileContent, _ := file.Open()
 	defer fileContent.Close()
 
-	// Загружаем файл в Minio
-	bucketName := os.Getenv("MINIO_BUCKET_NAME")
 	_, err = h.MinioClient.PutObject(context.Background(), bucketName, imageKey, fileContent, file.Size, minio.PutObjectOptions{
-		ContentType: "application/octet-stream", // или более конкретный тип, если известен
+		ContentType: "application/octet-stream",
 	})
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "не удалось загрузить файл в хранилище"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "не удалось загрузить файл"})
 		logrus.Error(err)
 		return
 	}
 
-	// TODO: Здесь должна быть логика удаления старого файла из Minio, если он был
-
-	// Обновляем запись в БД, сохраняя новое имя файла
 	workshop.ImageKey = imageKey
 	if err = h.Repository.UpdateWorkshop(&workshop); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "не удалось обновить мастерскую"})
 		return
 	}
-
 	c.JSON(http.StatusOK, workshop)
 }
 
@@ -242,7 +250,6 @@ func (h *Handler) FormApplication(c *gin.Context) {
 }
 
 func (h *Handler) CompleteApplication(c *gin.Context) {
-	// В реальном приложении здесь была бы проверка, что текущий пользователь - модератор
 	id, _ := strconv.Atoi(c.Param("id"))
 	app, err := h.Repository.GetApplicationByID(uint(id))
 	if err != nil {

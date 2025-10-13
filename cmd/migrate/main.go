@@ -1,30 +1,59 @@
 package main
 
 import (
-	"Iu5-web/internal/app/ds"
+	"Iu5-web/internal/app/config"
 	"Iu5-web/internal/app/dsn"
+	"Iu5-web/internal/app/handler"
+	"Iu5-web/internal/app/repository"
+	"Iu5-web/internal/pkg"
+	"os"
 
+	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
-	"gorm.io/driver/postgres"
-	"gorm.io/gorm"
+	"github.com/minio/minio-go/v7"
+	"github.com/minio/minio-go/v7/pkg/credentials"
+	"github.com/sirupsen/logrus"
 )
 
 func main() {
-	_ = godotenv.Load()
+	logrus.Info("Application start")
 
-	db, err := gorm.Open(postgres.Open(dsn.FromEnv()), &gorm.Config{})
-	if err != nil {
-		panic("не удалось подключиться к базе данных")
+	// Загружаем .env файл
+	if err := godotenv.Load(); err != nil {
+		logrus.Warn("не удалось загрузить .env файл")
 	}
 
-	// Выполняем автомиграцию для всех наших моделей
-	err = db.AutoMigrate(
-		&ds.User{},
-		&ds.Workshop{},
-		&ds.WorkshopApplication{},
-		&ds.WorkshopProduction{},
-	)
+	conf, err := config.NewConfig()
 	if err != nil {
-		panic("не удалось выполнить миграцию базы данных")
+		logrus.Fatalf("ошибка конфига: %v", err)
 	}
+
+	repo, err := repository.New(dsn.FromEnv())
+	if err != nil {
+		logrus.Fatalf("ошибка репозитория: %v", err)
+	}
+
+	// --- ПОДКЛЮЧЕНИЕ К MINIO ---
+	endpoint := os.Getenv("MINIO_ENDPOINT")
+	accessKeyID := os.Getenv("MINIO_ACCESS_KEY")
+	secretAccessKey := os.Getenv("MINIO_SECRET_KEY")
+	useSSL := false
+
+	minioClient, err := minio.New(endpoint, &minio.Options{
+		Creds:  credentials.NewStaticV4(accessKeyID, secretAccessKey, ""),
+		Secure: useSSL,
+	})
+	if err != nil {
+		logrus.Fatalf("ошибка инициализации Minio: %v", err)
+	}
+	logrus.Info("Minio client initialized")
+
+	// Передаем Minio-клиент в обработчики
+	hand := handler.NewHandler(repo, minioClient)
+
+	router := gin.Default()
+	application := pkg.New(conf, router, hand)
+	application.Run()
+
+	logrus.Info("Application terminated")
 }

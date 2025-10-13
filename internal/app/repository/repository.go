@@ -151,3 +151,14 @@ func (r *Repository) GetUserByID(id uint) (ds.User, error) {
 	err := r.db.First(&user, id).Error
 	return user, err
 }
+
+// находит пользователя по  логину
+func (r *Repository) GetUserByLogin(login string) (ds.User, error) {
+	var user ds.User
+	err := r.db.Where("login = ?", login).First(&user).Error
+	return user, err
+}
+
+func (r *Repository) UpdateUser(user *ds.User) error {
+	return r.db.Save(user).Error
+}

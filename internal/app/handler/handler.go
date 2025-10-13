@@ -4,6 +4,7 @@ import (
 	"Iu5-web/internal/app/ds"
 	"Iu5-web/internal/app/repository"
 	"context"
+	"errors"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -15,6 +16,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/minio/minio-go/v7"
 	"github.com/sirupsen/logrus"
+	"gorm.io/gorm"
 )
 
 const currentUserID = 1
@@ -368,31 +370,105 @@ func (h *Handler) RegisterUser(c *gin.Context) {
 		return
 	}
 
+	// Валидация
+	if user.Login == "" || user.Password == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "логин и пароль обязательны для заполнения"})
+		return
+	}
+
+	// ВАЖНО: В реальном приложении здесь должно быть хеширование пароля!
+
 	if err := h.Repository.CreateUser(&user); err != nil {
-		// пользователь существует
 		if strings.Contains(err.Error(), "unique constraint") {
 			c.JSON(http.StatusConflict, gin.H{"error": "пользователь с таким логином уже существует"})
 			return
 		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "не удалось зарегистрировать пользователя"})
-		logrus.Error(err)
 		return
 	}
 
-	// Не возвращаем пароль
-	user.Password = ""
+	user.Password = "" // Никогда не возвращаем пароль
 	c.JSON(http.StatusCreated, user)
 }
 
-// GET /api/users/me
+// AuthenticateUser обрабатывает POST /api/login
+func (h *Handler) AuthenticateUser(c *gin.Context) {
+	var loginData struct {
+		Login    string `json:"login"`
+		Password string `json:"password"`
+	}
+	if err := c.ShouldBindJSON(&loginData); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "неверные входные данные"})
+		return
+	}
+
+	user, err := h.Repository.GetUserByLogin(loginData.Login)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "неверный логин или пароль"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "ошибка сервера"})
+		return
+	}
+
+	// ВАЖНО: В реальном приложении здесь должно быть сравнение хеша пароля!
+	if user.Password != loginData.Password {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "неверный логин или пароль"})
+		return
+	}
+
+	// Логика сессий/JWT-токенов здесь опускается
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Аутентификация прошла успешно",
+		"token":   "fake-jwt-token-for-" + user.Login, // Возвращаем фейковый токен
+	})
+}
+
+// GetUserMe обрабатывает GET /api/users/me
 func (h *Handler) GetUserMe(c *gin.Context) {
+	// Используем "захардкоженный" ID, как того требует методичка
 	user, err := h.Repository.GetUserByID(currentUserID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "пользователь не найден"})
 		return
 	}
 
-	// Не возвращаем пароль
 	user.Password = ""
 	c.JSON(http.StatusOK, user)
+}
+
+// UpdateUserMe обрабатывает PUT /api/users/me
+func (h *Handler) UpdateUserMe(c *gin.Context) {
+	var updateData ds.User
+	if err := c.ShouldBindJSON(&updateData); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "неверные входные данные"})
+		return
+	}
+
+	user, err := h.Repository.GetUserByID(currentUserID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "пользователь не найден"})
+		return
+	}
+
+	// Обновляем только те поля, которые можно менять
+	user.Login = updateData.Login
+	// В реальном приложении пароль бы обновлялся отдельно и с хешированием
+	if updateData.Password != "" {
+		user.Password = updateData.Password
+	}
+
+	if err := h.Repository.UpdateUser(&user); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "не удалось обновить профиль"})
+		return
+	}
+
+	user.Password = ""
+	c.JSON(http.StatusOK, user)
+}
+
+// DeauthorizeUser обрабатывает POST /api/logout (заглушка)
+func (h *Handler) DeauthorizeUser(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{"message": "Деавторизация прошла успешно"})
 }

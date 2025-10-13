@@ -3,23 +3,32 @@ package handler
 import (
 	"Iu5-web/internal/app/ds"
 	"Iu5-web/internal/app/repository"
+	"context"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
+	"github.com/minio/minio-go/v7"
 	"github.com/sirupsen/logrus"
 )
 
 const currentUserID = 1
 
 type Handler struct {
-	Repository *repository.Repository
+	Repository  *repository.Repository
+	MinioClient *minio.Client
 }
 
-func NewHandler(r *repository.Repository) *Handler {
-	return &Handler{Repository: r}
+func NewHandler(r *repository.Repository, mc *minio.Client) *Handler {
+	return &Handler{
+		Repository:  r,
+		MinioClient: mc, // <-- Инициализируем новое поле
+	}
 }
 
 //Workshops
@@ -85,23 +94,56 @@ func (h *Handler) DeleteWorkshop(c *gin.Context) {
 }
 
 func (h *Handler) UploadWorkshopImage(c *gin.Context) {
-	id, _ := strconv.Atoi(c.Param("id"))
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "неверный id"})
+		return
+	}
+
 	workshop, err := h.Repository.GetWorkshopByID(uint(id))
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "мастерская не найдена"})
 		return
 	}
-	_, err = c.FormFile("image")
+
+	file, err := c.FormFile("image")
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "файл не загружен"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "файл не загружен: " + err.Error()})
 		return
 	}
-	imageKey := "temp_" + strconv.Itoa(id) + ".png" // Генерация уникального имени
+
+	// Генерируем уникальное имя для файла
+	fileExt := filepath.Ext(file.Filename)
+	imageKey := uuid.New().String() + fileExt
+
+	// Открываем содержимое файла
+	fileContent, err := file.Open()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "не удалось прочитать файл"})
+		return
+	}
+	defer fileContent.Close()
+
+	// Загружаем файл в Minio
+	bucketName := os.Getenv("MINIO_BUCKET_NAME")
+	_, err = h.MinioClient.PutObject(context.Background(), bucketName, imageKey, fileContent, file.Size, minio.PutObjectOptions{
+		ContentType: "application/octet-stream", // или более конкретный тип, если известен
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "не удалось загрузить файл в хранилище"})
+		logrus.Error(err)
+		return
+	}
+
+	// TODO: Здесь должна быть логика удаления старого файла из Minio, если он был
+
+	// Обновляем запись в БД, сохраняя новое имя файла
 	workshop.ImageKey = imageKey
 	if err = h.Repository.UpdateWorkshop(&workshop); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "не удалось обновить мастерскую"})
 		return
 	}
+
 	c.JSON(http.StatusOK, workshop)
 }
 
@@ -310,21 +352,40 @@ func (h *Handler) DeleteCartItem(c *gin.Context) {
 }
 
 // User
+
+// POST /api/register
 func (h *Handler) RegisterUser(c *gin.Context) {
 	var user ds.User
 	if err := c.ShouldBindJSON(&user); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "неверные данные"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "неверные входные данные"})
 		return
 	}
+
 	if err := h.Repository.CreateUser(&user); err != nil {
+		// пользователь существует
+		if strings.Contains(err.Error(), "unique constraint") {
+			c.JSON(http.StatusConflict, gin.H{"error": "пользователь с таким логином уже существует"})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "не удалось зарегистрировать пользователя"})
+		logrus.Error(err)
 		return
 	}
-	c.JSON(http.StatusCreated, gin.H{"message": "пользователь успешно создан"})
+
+	// Не возвращаем пароль
+	user.Password = ""
+	c.JSON(http.StatusCreated, user)
 }
 
+// GET /api/users/me
 func (h *Handler) GetUserMe(c *gin.Context) {
-	// Заглушка. В реальном приложении мы бы достали ID из токена.
-	// Здесь просто вернем захардкоженного пользователя 1.
-	c.JSON(http.StatusOK, gin.H{"id": currentUserID, "login": "testuser", "is_moderator": false})
+	user, err := h.Repository.GetUserByID(currentUserID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "пользователь не найден"})
+		return
+	}
+
+	// Не возвращаем пароль
+	user.Password = ""
+	c.JSON(http.StatusOK, user)
 }

@@ -145,3 +145,9 @@ func (r *Repository) GetDraftApplicationItemCount(userID uint) (int64, error) {
 func (r *Repository) CreateUser(user *ds.User) error {
 	return r.db.Create(user).Error
 }
+
+func (r *Repository) GetUserByID(id uint) (ds.User, error) {
+	var user ds.User
+	err := r.db.First(&user, id).Error
+	return user, err
+}

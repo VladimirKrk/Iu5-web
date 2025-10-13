@@ -6,39 +6,47 @@ import (
 	"Iu5-web/internal/app/handler"
 	"Iu5-web/internal/app/repository"
 	"Iu5-web/internal/pkg"
+	"os"
 
 	"github.com/gin-gonic/gin"
+	"github.com/minio/minio-go/v7"
+	"github.com/minio/minio-go/v7/pkg/credentials"
 	"github.com/sirupsen/logrus"
 )
 
 func main() {
 	logrus.Info("Application start")
 
-	// 1. Инициализируем конфиг
 	conf, err := config.NewConfig()
 	if err != nil {
-		logrus.Fatalf("ошибка инициализации конфига: %v", err)
+		logrus.Fatal(err)
 	}
 
-	// 2. Получаем строку для подключения к БД
-	postgresString := dsn.FromEnv()
-	if postgresString == "" {
-		logrus.Fatal("не удалось собрать DSN для подключения к БД")
-	}
-
-	// 3. Инициализируем репозиторий
-	repo, err := repository.New(postgresString)
+	repo, err := repository.New(dsn.FromEnv())
 	if err != nil {
-		logrus.Fatalf("ошибка инициализации репозитория: %v", err)
+		logrus.Fatal(err)
 	}
 
-	// 4. Инициализируем обработчики
-	hand := handler.NewHandler(repo)
+	// --- НОВЫЙ БЛОК: ПОДКЛЮЧЕНИЕ К MINIO ---
+	endpoint := os.Getenv("MINIO_ENDPOINT")
+	accessKeyID := os.Getenv("MINIO_ACCESS_KEY")
+	secretAccessKey := os.Getenv("MINIO_SECRET_KEY")
+	useSSL := false // Мы работаем локально без HTTPS
 
-	// 5. Инициализируем роутер
+	minioClient, err := minio.New(endpoint, &minio.Options{
+		Creds:  credentials.NewStaticV4(accessKeyID, secretAccessKey, ""),
+		Secure: useSSL,
+	})
+	if err != nil {
+		logrus.Fatalf("ошибка инициализации Minio: %v", err)
+	}
+	logrus.Info("Minio client initialized")
+	// --- КОНЕЦ НОВОГО БЛОКА ---
+
+	// Передаем Minio-клиент в обработчики
+	hand := handler.NewHandler(repo, minioClient)
+
 	router := gin.Default()
-
-	// 6. Создаем и запускаем приложение
 	application := pkg.New(conf, router, hand)
 	application.Run()
 

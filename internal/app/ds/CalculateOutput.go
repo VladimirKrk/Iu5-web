@@ -1,8 +1,8 @@
 package ds
 
-import "fmt"
-
-// ФОРМУЛА ДЛЯ РАСЧЕТА ОБЪЕМА ПРОИЗВОДСТВА ПО КОЛИЧЕСТВУ ДЕФЕКТОВ
+import (
+	"fmt"
+)
 
 func CalculateProductionOutput(foundDefects int) string {
 	const (
@@ -13,10 +13,8 @@ func CalculateProductionOutput(foundDefects int) string {
 	// Расчет выпуск
 	calculatedOutput := float64(foundDefects) / (DefectiveRate * FoundRate)
 
-	// Выпуск не может быть отрицательным
-	if calculatedOutput < 0 {
-		calculatedOutput = 0
-	}
+	// Получаем целое число
+	calculatedOutputInt := int(calculatedOutput)
 
-	return fmt.Sprintf("%f шт.", calculatedOutput)
+	return fmt.Sprintf("%d шт.", calculatedOutputInt)
 }

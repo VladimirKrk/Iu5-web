@@ -125,35 +125,52 @@ func (h *Handler) UploadWorkshopImage(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "мастерская не найдена"})
 		return
 	}
-	file, err := c.FormFile("image")
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "файл не загружен"})
-		return
-	}
 
 	bucketName := os.Getenv("MINIO_BUCKET_NAME")
-	if workshop.ImageKey != "" {
-		_ = h.MinioClient.RemoveObject(context.Background(), bucketName, workshop.ImageKey, minio.RemoveObjectOptions{})
+
+	// Обработка осн. изображения
+	file, err := c.FormFile("image")
+	if err == nil { // Если файл с ключом 'image' пришел
+		// Удаляем старый файл
+		if workshop.ImageKey != "" {
+			_ = h.MinioClient.RemoveObject(context.Background(), bucketName, workshop.ImageKey, minio.RemoveObjectOptions{})
+		}
+		// Загружаем новый
+		imageKey := uuid.New().String() + filepath.Ext(file.Filename)
+		fileContent, _ := file.Open()
+		defer fileContent.Close()
+		_, err = h.MinioClient.PutObject(context.Background(), bucketName, imageKey, fileContent, file.Size, minio.PutObjectOptions{})
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "не удалось загрузить основное изображение"})
+			return
+		}
+		workshop.ImageKey = imageKey
 	}
 
-	imageKey := uuid.New().String() + filepath.Ext(file.Filename)
-	fileContent, _ := file.Open()
-	defer fileContent.Close()
-
-	_, err = h.MinioClient.PutObject(context.Background(), bucketName, imageKey, fileContent, file.Size, minio.PutObjectOptions{
-		ContentType: "application/octet-stream",
-	})
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "не удалось загрузить файл"})
-		logrus.Error(err)
-		return
+	// обработка доп изображения
+	extraFile, err := c.FormFile("extra_image")
+	if err == nil { // Если файл с ключом 'extra_image' пришел
+		// Удаляем старый файл
+		if workshop.ExtraImageKey != "" {
+			_ = h.MinioClient.RemoveObject(context.Background(), bucketName, workshop.ExtraImageKey, minio.RemoveObjectOptions{})
+		}
+		// Загружаем новый
+		extraImageKey := uuid.New().String() + filepath.Ext(extraFile.Filename)
+		extraFileContent, _ := extraFile.Open()
+		defer extraFileContent.Close()
+		_, err = h.MinioClient.PutObject(context.Background(), bucketName, extraImageKey, extraFileContent, extraFile.Size, minio.PutObjectOptions{})
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "не удалось загрузить дополнительное изображение"})
+			return
+		}
+		workshop.ExtraImageKey = extraImageKey
 	}
 
-	workshop.ImageKey = imageKey
 	if err = h.Repository.UpdateWorkshop(&workshop); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "не удалось обновить мастерскую"})
 		return
 	}
+
 	c.JSON(http.StatusOK, workshop)
 }
 
@@ -376,8 +393,6 @@ func (h *Handler) RegisterUser(c *gin.Context) {
 		return
 	}
 
-	// ВАЖНО: В реальном приложении здесь должно быть хеширование пароля!
-
 	if err := h.Repository.CreateUser(&user); err != nil {
 		if strings.Contains(err.Error(), "unique constraint") {
 			c.JSON(http.StatusConflict, gin.H{"error": "пользователь с таким логином уже существует"})
@@ -391,7 +406,7 @@ func (h *Handler) RegisterUser(c *gin.Context) {
 	c.JSON(http.StatusCreated, user)
 }
 
-// AuthenticateUser обрабатывает POST /api/login
+// POST /api/login
 func (h *Handler) AuthenticateUser(c *gin.Context) {
 	var loginData struct {
 		Login    string `json:"login"`
@@ -412,20 +427,18 @@ func (h *Handler) AuthenticateUser(c *gin.Context) {
 		return
 	}
 
-	// ВАЖНО: В реальном приложении здесь должно быть сравнение хеша пароля!
 	if user.Password != loginData.Password {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "неверный логин или пароль"})
 		return
 	}
 
-	// Логика сессий/JWT-токенов здесь опускается
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Аутентификация прошла успешно",
-		"token":   "fake-jwt-token-for-" + user.Login, // Возвращаем фейковый токен
+		"token":   "fake-jwt-token-for-" + user.Login,
 	})
 }
 
-// GetUserMe обрабатывает GET /api/users/me
+// GET /api/users/me
 func (h *Handler) GetUserMe(c *gin.Context) {
 	// Используем "захардкоженный" ID, как того требует методичка
 	user, err := h.Repository.GetUserByID(currentUserID)
@@ -438,7 +451,7 @@ func (h *Handler) GetUserMe(c *gin.Context) {
 	c.JSON(http.StatusOK, user)
 }
 
-// UpdateUserMe обрабатывает PUT /api/users/me
+// PUT /api/users/me
 func (h *Handler) UpdateUserMe(c *gin.Context) {
 	var updateData ds.User
 	if err := c.ShouldBindJSON(&updateData); err != nil {
@@ -468,7 +481,7 @@ func (h *Handler) UpdateUserMe(c *gin.Context) {
 	c.JSON(http.StatusOK, user)
 }
 
-// DeauthorizeUser обрабатывает POST /api/logout (заглушка)
+// POST /api/logout (заглушка)
 func (h *Handler) DeauthorizeUser(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Деавторизация прошла успешно"})
 }

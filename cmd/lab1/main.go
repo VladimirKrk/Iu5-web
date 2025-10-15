@@ -27,7 +27,6 @@ func main() {
 		logrus.Fatal(err)
 	}
 
-	// --- НОВЫЙ БЛОК: ПОДКЛЮЧЕНИЕ К MINIO ---
 	endpoint := os.Getenv("MINIO_ENDPOINT")
 	accessKeyID := os.Getenv("MINIO_ACCESS_KEY")
 	secretAccessKey := os.Getenv("MINIO_SECRET_KEY")
@@ -41,9 +40,7 @@ func main() {
 		logrus.Fatalf("ошибка инициализации Minio: %v", err)
 	}
 	logrus.Info("Minio client initialized")
-	// --- КОНЕЦ НОВОГО БЛОКА ---
 
-	// Передаем Minio-клиент в обработчики
 	hand := handler.NewHandler(repo, minioClient)
 
 	router := gin.Default()

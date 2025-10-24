@@ -22,7 +22,6 @@ func New(c *config.Config, r *gin.Engine, h *handler.Handler) *App {
 func (a *App) Run() {
 	logrus.Info("Starting server")
 
-	// Группа роутов /api
 	api := a.Router.Group("/api")
 	{
 		// Домен "Мастерские"
@@ -36,29 +35,35 @@ func (a *App) Run() {
 			workshops.POST("/:id/image", a.Handler.UploadWorkshopImage)
 		}
 
-		// Домен "Заказы"
-		orders := api.Group("/orders")
+		// Домен "Заявки"
+		applications := api.Group("/applications")
 		{
-			orders.GET("", a.Handler.GetApplications)
-			orders.GET("/:id", a.Handler.GetApplicationByID)
-			orders.PUT("/:id", a.Handler.UpdateApplication)
-			orders.PUT("/:id/form", a.Handler.FormApplication)
-			orders.PUT("/:id/complete", a.Handler.CompleteApplication)
-			orders.DELETE("/:id", a.Handler.DeleteApplication)
+			applications.GET("", a.Handler.GetWorkshopApplications)
+			applications.GET("/:id", a.Handler.GetWorkshopApplicationByID)
+			applications.PUT("/:id", a.Handler.UpdateWorkshopApplication)
+			applications.PUT("/:id/form", a.Handler.FormWorkshopApplication)
+			applications.PUT("/:id/complete", a.Handler.CompleteWorkshopApplication)
+			applications.DELETE("/:id", a.Handler.DeleteWorkshopApplication)
 		}
 
-		// Домен "Корзина"
-		cart := api.Group("/cart")
+		// Домен "Продукция в заказе"
+		production := api.Group("/production")
 		{
-			cart.GET("/icon", a.Handler.GetCartIcon)
-			cart.POST("/workshops", a.Handler.AddWorkshopToCart)
-			cart.PUT("/items", a.Handler.UpdateCartItem)
-			cart.DELETE("/items", a.Handler.DeleteCartItem)
+			production.GET("/info", a.Handler.GetProductionInfo)
+			production.POST("/items", a.Handler.AddWorkshopToProduction)
+			production.PUT("/items", a.Handler.UpdateProductionItem)
+			production.DELETE("/items", a.Handler.DeleteProductionItem)
 		}
 
 		// Домен "Пользователи"
+		users := api.Group("/users")
+		{
+			users.GET("/me", a.Handler.GetUserMe)
+			users.PUT("/me", a.Handler.UpdateUserMe)
+		}
 		api.POST("/register", a.Handler.RegisterUser)
-		api.GET("/users/me", a.Handler.GetUserMe)
+		api.POST("/login", a.Handler.AuthenticateUser)
+		api.POST("/logout", a.Handler.DeauthorizeUser)
 	}
 
 	serverAddress := fmt.Sprintf("%s:%d", a.Config.ServiceHost, a.Config.ServicePort)

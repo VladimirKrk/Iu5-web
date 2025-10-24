@@ -13,7 +13,7 @@ type WorkshopApplication struct {
 	Creator        User                 `gorm:"foreignKey:CreatorID"`
 	Moderator      User                 `gorm:"foreignKey:ModeratorID"`
 	Items          []WorkshopProduction `gorm:"foreignKey:ApplicationID"`
-	ProductionName string               `gorm:"type:varchar(255)"`
+	ProductionName *string              `gorm:"type:varchar(255)"`
 }
 
 func (wa WorkshopApplication) TableName() string { return "workshop_applications" }

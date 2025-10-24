@@ -3,7 +3,7 @@ package ds
 type Workshop struct {
 	ID            uint   `gorm:"primaryKey"`
 	Name          string `gorm:"type:varchar(255);not null"`
-	Description   string `gorm:"type:text"`
+	Description   string `gorm:"type:text;not null"`
 	Century       string `gorm:"type:varchar(50)"`
 	ImageKey      string `gorm:"type:varchar(255)"`
 	ExtraImageKey string `gorm:"type:varchar(255)"`

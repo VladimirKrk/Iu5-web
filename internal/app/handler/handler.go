@@ -26,6 +26,56 @@ type Handler struct {
 	MinioClient *minio.Client
 }
 
+// DTO для отображения заявки в СПИСКЕ
+type ApplicationListItemDTO struct {
+	ID        uint      `json:"id"`
+	Status    string    `json:"status"`
+	CreatedAt time.Time `json:"created_at"`
+	Creator   string    `json:"creator_login"`
+
+	// НОВОЕ ВЫЧИСЛЯЕМОЕ ПОЛЕ
+	CompletedItemsCount int `json:"completed_items_count"`
+}
+
+// DTO для мастерской внутри заказа
+type WorkshopInAppDTO struct {
+	ID      uint   `json:"id"`
+	Name    string `json:"name"`
+	Century string `json:"century"`
+}
+
+type ProductionItemResponseDTO struct {
+	ID              uint   `json:"id"`
+	ApplicationID   uint   `json:"application_id"`
+	WorkshopID      uint   `json:"workshop_id"`
+	FoundDefects    int    `json:"found_defects"`
+	PredictedOutput string `json:"predicted_output"`
+}
+
+// DTO для позиции в заказе
+type ProductionItemDTO struct {
+	Workshop        WorkshopInAppDTO `json:"workshop"`
+	FoundDefects    int              `json:"found_defects"`
+	PredictedOutput string           `json:"predicted_output"`
+}
+
+// DTO для детального просмотра заказа
+type ApplicationDetailDTO struct {
+	ID             uint                `json:"id"`
+	Status         string              `json:"status"`
+	ProductionName *string             `json:"production_name"`
+	CreatorLogin   string              `json:"creator_login"`
+	Items          []ProductionItemDTO `json:"items"`
+}
+
+// DTO для мастерской
+type WorkshopListItemDTO struct {
+	ID       uint   `json:"id"`
+	Name     string `json:"name"`
+	Century  string `json:"century"`
+	ImageKey string `json:"image_key"`
+}
+
 func NewHandler(r *repository.Repository, mc *minio.Client) *Handler {
 	return &Handler{
 		Repository:  r,
@@ -36,12 +86,19 @@ func NewHandler(r *repository.Repository, mc *minio.Client) *Handler {
 // Workshops
 
 func (h *Handler) GetWorkshops(c *gin.Context) {
-	workshops, err := h.Repository.GetWorkshops(c.Query("name"))
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
+	workshops, _ := h.Repository.GetWorkshops(c.Query("name"))
+
+	responseItems := make([]WorkshopListItemDTO, len(workshops))
+	for i, ws := range workshops {
+		responseItems[i] = WorkshopListItemDTO{
+			ID:       ws.ID,
+			Name:     ws.Name,
+			Century:  ws.Century,
+			ImageKey: ws.ImageKey,
+		}
 	}
-	c.JSON(http.StatusOK, workshops)
+
+	c.JSON(http.StatusOK, responseItems)
 }
 
 func (h *Handler) GetWorkshopByID(c *gin.Context) {
@@ -105,7 +162,35 @@ func (h *Handler) DeleteWorkshop(c *gin.Context) {
 	}
 	c.Status(http.StatusNoContent)
 }
+func (h *Handler) AddWorkshopToProduction(c *gin.Context) {
+	var addData struct {
+		WorkshopID uint `json:"workshop_id"`
+	}
+	if err := c.ShouldBindJSON(&addData); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "неверные входные данные"})
+		return
+	}
+	draftApp, _ := h.Repository.FindOrCreateDraftApplication(currentUserID)
+	item, err := h.Repository.AddWorkshopToApplication(draftApp.ID, addData.WorkshopID)
+	if err != nil {
+		if strings.Contains(err.Error(), "unique constraint") {
+			c.JSON(http.StatusConflict, gin.H{"error": "эта мастерская уже в заявке"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "не удалось добавить в заявку"})
+		return
+	}
 
+	response := ProductionItemResponseDTO{
+		ID:              item.ID,
+		ApplicationID:   item.ApplicationID,
+		WorkshopID:      item.WorkshopID,
+		FoundDefects:    item.FoundDefects,
+		PredictedOutput: item.PredictedOutput,
+	}
+
+	c.JSON(http.StatusCreated, response)
+}
 func (h *Handler) UploadWorkshopImage(c *gin.Context) {
 	id, _ := strconv.Atoi(c.Param("id"))
 	workshop, err := h.Repository.GetWorkshopByID(uint(id))
@@ -153,6 +238,8 @@ func (h *Handler) UploadWorkshopImage(c *gin.Context) {
 
 // Workshop Applications
 
+// handler.go
+
 func (h *Handler) GetWorkshopApplications(c *gin.Context) {
 	status, dateFromString, dateToString := c.Query("status"), c.Query("date_from"), c.Query("date_to")
 	var dateFrom, dateTo time.Time
@@ -171,12 +258,28 @@ func (h *Handler) GetWorkshopApplications(c *gin.Context) {
 			return
 		}
 	}
+
 	apps, err := h.Repository.GetWorkshopApplications(status, dateFrom, dateTo)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "не удалось получить заявки"})
 		return
 	}
-	c.JSON(http.StatusOK, apps)
+
+	responseItems := make([]ApplicationListItemDTO, len(apps))
+	for i, app := range apps {
+		// Для каждой заявки вызываем новый метод подсчета
+		completedCount, _ := h.Repository.GetCompletedItemCount(app.ID)
+
+		responseItems[i] = ApplicationListItemDTO{
+			ID:                  app.ID,
+			Status:              app.Status,
+			CreatedAt:           app.CreatedAt,
+			Creator:             app.Creator.Login,
+			CompletedItemsCount: int(completedCount),
+		}
+	}
+
+	c.JSON(http.StatusOK, responseItems)
 }
 
 func (h *Handler) GetWorkshopApplicationByID(c *gin.Context) {
@@ -186,11 +289,28 @@ func (h *Handler) GetWorkshopApplicationByID(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "заявка не найдена"})
 		return
 	}
-	if app.Status == "удалён" || app.CreatorID != currentUserID {
-		c.JSON(http.StatusNotFound, gin.H{"error": "заявка не найдена или нет доступа"})
-		return
+	itemsDTO := make([]ProductionItemDTO, len(app.Items))
+	for i, item := range app.Items {
+		itemsDTO[i] = ProductionItemDTO{
+			Workshop: WorkshopInAppDTO{
+				ID:      item.Workshop.ID,
+				Name:    item.Workshop.Name,
+				Century: item.Workshop.Century,
+			},
+			FoundDefects:    item.FoundDefects,
+			PredictedOutput: item.PredictedOutput,
+		}
 	}
-	c.JSON(http.StatusOK, app)
+
+	response := ApplicationDetailDTO{
+		ID:             app.ID,
+		Status:         app.Status,
+		ProductionName: app.ProductionName,
+		CreatorLogin:   app.Creator.Login,
+		Items:          itemsDTO,
+	}
+
+	c.JSON(http.StatusOK, response)
 }
 
 func (h *Handler) UpdateWorkshopApplication(c *gin.Context) {
@@ -212,11 +332,35 @@ func (h *Handler) UpdateWorkshopApplication(c *gin.Context) {
 		return
 	}
 	app.ProductionName = &updateData.ProductionName
+
 	if err := h.Repository.UpdateWorkshopApplication(&app); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "не удалось обновить заявку"})
 		return
 	}
-	c.JSON(http.StatusOK, app)
+
+	itemsDTO := make([]ProductionItemDTO, len(app.Items))
+	for i, item := range app.Items {
+		itemsDTO[i] = ProductionItemDTO{
+			Workshop: WorkshopInAppDTO{
+				ID:      item.Workshop.ID,
+				Name:    item.Workshop.Name,
+				Century: item.Workshop.Century,
+			},
+			FoundDefects:    item.FoundDefects,
+			PredictedOutput: item.PredictedOutput,
+		}
+	}
+
+	response := ApplicationDetailDTO{
+		ID:             app.ID,
+		Status:         app.Status,
+		ProductionName: app.ProductionName,
+		CreatorLogin:   app.Creator.Login,
+		Items:          itemsDTO,
+	}
+
+	// Отдаем "чистый" DTO
+	c.JSON(http.StatusOK, response)
 }
 
 func (h *Handler) FormWorkshopApplication(c *gin.Context) {
@@ -281,34 +425,13 @@ func (h *Handler) DeleteWorkshopApplication(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
-// Workshop Production
-
 func (h *Handler) GetProductionInfo(c *gin.Context) {
 	draftApp, _ := h.Repository.FindOrCreateDraftApplication(currentUserID)
 	itemCount, _ := h.Repository.GetDraftItemCount(currentUserID)
 	c.JSON(http.StatusOK, gin.H{"application_id": draftApp.ID, "item_count": itemCount})
 }
 
-func (h *Handler) AddWorkshopToProduction(c *gin.Context) {
-	var addData struct {
-		WorkshopID uint `json:"workshop_id"`
-	}
-	if err := c.ShouldBindJSON(&addData); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "неверные входные данные"})
-		return
-	}
-	draftApp, _ := h.Repository.FindOrCreateDraftApplication(currentUserID)
-	item, err := h.Repository.AddWorkshopToApplication(draftApp.ID, addData.WorkshopID)
-	if err != nil {
-		if strings.Contains(err.Error(), "unique constraint") {
-			c.JSON(http.StatusConflict, gin.H{"error": "эта мастерская уже в заявке"})
-			return
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "не удалось добавить в заявку"})
-		return
-	}
-	c.JSON(http.StatusCreated, item)
-}
+// Workshop Production
 
 func (h *Handler) UpdateProductionItem(c *gin.Context) {
 	var updateData struct {

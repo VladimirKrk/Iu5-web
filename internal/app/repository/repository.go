@@ -141,6 +141,16 @@ func (r *Repository) GetDraftItemCount(userID uint) (int64, error) {
 	return count, r.db.Model(&ds.WorkshopProduction{}).Where("application_id = ?", app.ID).Count(&count).Error
 }
 
+// GetCompletedItemCount считает количество позиций в заявке с непустым результатом
+func (r *Repository) GetCompletedItemCount(appID uint) (int64, error) {
+	var count int64
+	// Считаем записи, где application_id совпадает И predicted_output не является пустой строкой
+	err := r.db.Model(&ds.WorkshopProduction{}).
+		Where("application_id = ? AND predicted_output != ?", appID, "").
+		Count(&count).Error
+	return count, err
+}
+
 // ==========================================
 // Домен "Пользователи" (Users)
 // ==========================================

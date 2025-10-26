@@ -1,14 +1,10 @@
 package ds
 
-// представляет таблицу users
 type User struct {
-	ID          uint   `gorm:"primaryKey"`
-	Login       string `gorm:"type:varchar(50);unique;not null"`
-	Password    string `gorm:"type:varchar(255);not null"`
-	IsModerator bool   `gorm:"default:false"`
+	ID          uint   `gorm:"primaryKey" json:"id"`
+	Login       string `gorm:"type:varchar(50);unique;not null" json:"login"`
+	Password    string `gorm:"type:varchar(255);not null" json:"password"`
+	IsModerator bool   `gorm:"default:false" json:"is_moderator"`
 }
 
-// Указываем GORM, что эта структура соответствует таблице 'users'
-func (u User) TableName() string {
-	return "users"
-}
+func (User) TableName() string { return "users" }

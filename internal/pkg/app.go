@@ -22,6 +22,7 @@ func New(c *config.Config, r *gin.Engine, h *handler.Handler) *App {
 func (a *App) Run() {
 	logrus.Info("Starting server")
 
+	// Группа роутов /api
 	api := a.Router.Group("/api")
 	{
 		// Домен "Мастерские"
@@ -32,27 +33,28 @@ func (a *App) Run() {
 			workshops.POST("", a.Handler.CreateWorkshop)
 			workshops.PUT("/:id", a.Handler.UpdateWorkshop)
 			workshops.DELETE("/:id", a.Handler.DeleteWorkshop)
+			workshops.POST("/items", a.Handler.AddWorkshopToProduction)
 			workshops.POST("/:id/image", a.Handler.UploadWorkshopImage)
 		}
 
 		// Домен "Заявки"
-		applications := api.Group("/applications")
+		workshopApplications := api.Group("/workshop_applications")
 		{
-			applications.GET("", a.Handler.GetWorkshopApplications)
-			applications.GET("/:id", a.Handler.GetWorkshopApplicationByID)
-			applications.PUT("/:id", a.Handler.UpdateWorkshopApplication)
-			applications.PUT("/:id/form", a.Handler.FormWorkshopApplication)
-			applications.PUT("/:id/complete", a.Handler.CompleteWorkshopApplication)
-			applications.DELETE("/:id", a.Handler.DeleteWorkshopApplication)
+			workshopApplications.GET("", a.Handler.GetWorkshopApplications)
+			workshopApplications.GET("/:id", a.Handler.GetWorkshopApplicationByID)
+			workshopApplications.PUT("/:id", a.Handler.UpdateWorkshopApplication)
+			workshopApplications.PUT("/:id/form", a.Handler.FormWorkshopApplication)
+			workshopApplications.PUT("/:id/complete", a.Handler.CompleteWorkshopApplication)
+			workshopApplications.DELETE("/:id", a.Handler.DeleteWorkshopApplication)
+			workshopApplications.GET("/info", a.Handler.GetProductionInfo)
 		}
 
 		// Домен "Продукция в заказе"
-		production := api.Group("/production")
+		workshopProduction := api.Group("/workshop_production")
 		{
-			production.GET("/info", a.Handler.GetProductionInfo)
-			production.POST("/items", a.Handler.AddWorkshopToProduction)
-			production.PUT("/items", a.Handler.UpdateProductionItem)
-			production.DELETE("/items", a.Handler.DeleteProductionItem)
+
+			workshopProduction.PUT("/items", a.Handler.UpdateProductionItem)
+			workshopProduction.DELETE("/items", a.Handler.DeleteProductionItem)
 		}
 
 		// Домен "Пользователи"

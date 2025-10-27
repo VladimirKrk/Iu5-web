@@ -1,0 +1,127 @@
+/* resources/styles/detail_style.css */
+
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
+
+/* Общие стили */
+body {
+    margin: 0;
+    font-family: 'Roboto', sans-serif;
+    font-weight: 400;
+    background-color: #FFFFFF;
+    color: #000000;
+}
+
+.container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+a {
+    text-decoration: none;
+    color: inherit;
+}
+
+/* Header */
+.header {
+    background-color: #FFFFFF;
+    padding: 15px 0;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.header-container {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+}
+
+.logo img {
+    height: 18px;
+    width: 55px;
+    display: block;
+}
+
+/* 
+=====================================================
+=== ОБНОВЛЕННЫЕ СТИЛИ ДЛЯ ДЕТАЛЬНОЙ СТРАНИЦЫ ========
+=====================================================
+*/
+.main {
+    padding-top: 80px;
+}
+
+/* Блок для заголовка и века */
+.title-section {
+    position: relative;
+    width: 100%;
+    margin-bottom: 101px; /* Отступ до карточек */
+}
+
+/* Обертка для заголовка, чтобы задать ему отступ */
+.title-wrapper {
+    padding-left: 64px; /* 64 пикселя от левой стенки сайта */
+}
+
+.detail-title {
+    margin: 0;
+    font-size: 52px;
+    font-weight: 400; /* ИЗМЕНЕНО: начертание regular */
+}
+
+.detail-century {
+    font-size: 52px;
+    font-weight: 700;
+    position: absolute;
+    top: 0;
+    right: 63px;
+    margin: 0;
+}
+
+/* НОВЫЙ БЛОК-ОБЕРТКА ДЛЯ ГАЛЕРЕИ И ОПИСАНИЯ */
+.content-row {
+    display: flex; /* Выстраиваем элементы в ряд */
+    align-items: flex-start; /* Выравниваем по верхнему краю */
+    /* Задаем отступы слева и справа для всего ряда */
+    padding-left: 64px;
+    padding-right: 57px;
+}
+
+/* Фотогалерея */
+.photo-gallery {
+    display: flex;
+    gap: 25px;
+    /* Убираем левый padding, так как он теперь у родителя */
+}
+
+.photo-card {
+    width: 393px;
+    height: 393px;
+    background-color: #E9E9E9;
+    border-radius: 15px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    /* Это свойство не дает карточкам сжиматься */
+    flex-shrink: 0; 
+}
+
+.photo-card img {
+    width: 353px;
+    height: 353px;
+    object-fit: cover;
+}
+
+/* Описание справа от галереи */
+.description-wrapper {
+    /* 80 пикселей левее второй карточки */
+    margin-left: 80px;
+    
+    font-size: 24px; /* ШРИФТ 24px */
+    font-weight: 400; /* Regular */
+    line-height: 1.7;
+    text-align: justify; /* Расположение по ширине */
+    color: #333333;
+}

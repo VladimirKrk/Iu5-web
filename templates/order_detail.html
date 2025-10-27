@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Заказ №{{ .ProductionOrder.ID }}</title>
+    <link rel="stylesheet" href="/resources/styles/order_style.css">
+</head>
+<body>
+
+    <header class="header">
+        <div class="container header-container">
+            <a href="/" class="logo">
+                <img src="/resources/img/logo.png" alt="VLK Logo">
+            </a>
+        </div>
+    </header>
+
+    <main class="main">
+        <div class="container">
+            
+            <div class="filter-bar">
+                <label>Введите название мастерской</label>
+                <input 
+                    type="text" 
+                    id="productionNameInput" 
+                    class="filter-input" 
+                    placeholder="Введите название" 
+                    value="{{ .ProductionOrder.ProductionName }}">
+                <!-- 
+                    ИЗМЕНЕНИЕ №1:
+                    Убран 'onclick'. Вместо него добавлен 'id' и 'data-order-id'
+                -->
+                <button 
+                    type="button" 
+                    id="saveButton"
+                    data-order-id="{{ .ProductionOrder.ID }}"
+                    class="save-button">Сохранить</button>
+            </div>
+
+            <div class="application-header">
+                <div class="header-label">введите количество найденного брака</div>
+                <div class="header-label">прогнозируемый объем выпуска в год</div>
+            </div>
+
+            <div class="cart-items-wrapper">
+                {{ range .Items }}
+                <div class="application-item">
+                    <img src="{{ .Workshop.ImageURL }}" alt="{{ .Workshop.Name }}" class="item-image">
+                    <div class="item-info">
+                        <span class="item-title">{{ .Workshop.Name }}</span>
+                        <p class="item-description">{{ .Workshop.Description }}</p>
+                    </div>
+                    <div class="item-field">
+                        <input type="text" value="{{ .FoundDefects }}" readonly>
+                    </div>
+                    <div class="item-field">
+                        <input type="text" value="{{ .PredictedOutput }}" readonly>
+                    </div>
+                    <p class="item-century">{{ .Workshop.Century }}</p>
+                </div>
+                {{ end }}
+            </div>
+            
+            <div class="application-summary">
+                {{ len .Items }} заявки в корзине
+            </div>
+            
+            <form action="/delete-order" method="POST" style="text-align: center; margin-top: 30px;">
+                <input type="hidden" name="application_id" value="{{ .ProductionOrder.ID }}">
+                <button type="submit" style="padding: 10px 20px; font-size: 16px; cursor: pointer;">Удалить заказ</button>
+            </form>
+        </div>
+        
+        <!-- 
+            ИЗМЕНЕНИЕ №2:
+            JavaScript теперь сам находит кнопку и назначает ей действие
+        -->
+        <script>
+            // Эта функция остается без изменений
+            function updateProductionName(orderId) {
+                const newName = document.getElementById('productionNameInput').value;
+                fetch(`/api/orders/${orderId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ production_name: newName }),
+                })
+                .then(response => {
+                    if (response.ok) {
+                        window.location.reload();
+                    } else {
+                        alert('Не удалось сохранить название!');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Произошла сетевая ошибка.');
+                });
+            }
+
+            // Новый код, который "активирует" кнопку
+            document.addEventListener('DOMContentLoaded', function() {
+                const saveBtn = document.getElementById('saveButton');
+                if (saveBtn) {
+                    saveBtn.addEventListener('click', function() {
+                        const orderId = this.dataset.orderId; // Читаем ID из data-атрибута
+                        updateProductionName(orderId);
+                    });
+                }
+            });
+        </script>
+
+    </main>
+
+</body>
+</html>

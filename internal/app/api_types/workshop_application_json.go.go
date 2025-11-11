@@ -99,11 +99,31 @@ func ConvertApplicationToDetailedResponse(app ds.WorkshopApplication, items []ds
 		if item.PredictedOutput.Valid {
 			predictedOutput = &item.PredictedOutput.String
 		}
+
+		dbImageKey := item.Workshop.ImageKey
+		dbExtraImageKey := item.Workshop.ExtraImageKey
+
+		var imageKey, extraImageKey *string
+		if dbImageKey.Valid {
+			imageKey = &dbImageKey.String
+		}
+		if dbExtraImageKey.Valid {
+			extraImageKey = &dbExtraImageKey.String
+		}
+
 		itemResponses[i] = ProductionItemResponse{
-			Workshop:        ConvertWorkshopToResponse(item.Workshop),
+			Workshop: WorkshopResponse{
+				ID:            item.Workshop.ID,
+				Name:          item.Workshop.Name,
+				Description:   item.Workshop.Description,
+				Century:       item.Workshop.Century,
+				ImageKey:      imageKey,
+				ExtraImageKey: extraImageKey,
+			},
 			FoundDefects:    item.FoundDefects,
 			PredictedOutput: predictedOutput,
 		}
+
 	}
 
 	return ApplicationDetailedResponse{

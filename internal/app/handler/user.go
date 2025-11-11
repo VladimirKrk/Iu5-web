@@ -18,9 +18,9 @@ import (
 // @Produce      json
 // @Param        user body api_types.UserRegisterRequest true "User Registration Info"
 // @Success      201  {object} api_types.UserResponse
-// @Failure      400  {object} gin.H "Invalid input"
-// @Failure      409  {object} gin.H "User already exists"
-// @Failure      500  {object} gin.H "Internal server error"
+// @Failure      400  {object} api_types.ErrorResponse "Invalid input"
+// @Failure      409  {object} api_types.ErrorResponse "User already exists"
+// @Failure      500  {object} api_types.ErrorResponse "Internal server error"
 // @Router       /register [post]
 func (h *Handler) RegisterUser(c *gin.Context) {
 	var req api_types.UserRegisterRequest
@@ -28,13 +28,11 @@ func (h *Handler) RegisterUser(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input: " + err.Error()})
 		return
 	}
-
 	user, err := h.Repository.CreateUser(req)
 	if err != nil {
 		h.errorHandler(c, err)
 		return
 	}
-
 	c.JSON(http.StatusCreated, api_types.ConvertUserToResponse(user))
 }
 
@@ -45,10 +43,9 @@ func (h *Handler) RegisterUser(c *gin.Context) {
 // @Accept       json
 // @Produce      json
 // @Param        credentials body api_types.UserLoginRequest true "User Credentials"
-// @Success      200  {object} gin.H "token"
-// @Failure      400  {object} gin.H "Invalid input"
-// @Failure      401  {object} gin.H "Invalid credentials"
-// @Failure      500  {object} gin.H "Internal server error"
+// @Success      200  {object} api_types.TokenResponse
+// @Failure      400  {object} api_types.ErrorResponse "Invalid input"
+// @Failure      401  {object} api_types.ErrorResponse "Invalid credentials"
 // @Router       /login [post]
 func (h *Handler) AuthenticateUser(c *gin.Context) {
 	var req api_types.UserLoginRequest
@@ -56,13 +53,11 @@ func (h *Handler) AuthenticateUser(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input: " + err.Error()})
 		return
 	}
-
 	token, err := h.Repository.AuthenticateUser(req)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		return
 	}
-
 	c.JSON(http.StatusOK, gin.H{"token": token})
 }
 
@@ -71,8 +66,8 @@ func (h *Handler) AuthenticateUser(c *gin.Context) {
 // @Description  Invalidates the current user's JWT token by adding it to a blacklist.
 // @Tags         Auth
 // @Produce      json
-// @Success      200  {object} gin.H "status"
-// @Failure      401  {object} gin.H "Unauthorized"
+// @Success      200  {object} api_types.StatusResponse
+// @Failure      401  {object} api_types.ErrorResponse "Unauthorized"
 // @Security     BearerAuth
 // @Router       /logout [post]
 func (h *Handler) DeauthorizeUser(c *gin.Context) {
@@ -80,24 +75,20 @@ func (h *Handler) DeauthorizeUser(c *gin.Context) {
 	token, _ := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		return []byte(os.Getenv("JWT_SECRET")), nil
 	})
-
 	claims, ok := token.Claims.(jwt.MapClaims)
 	if !ok {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid token claims"})
 		return
 	}
-
 	ttl, err := GetTokenTTL(claims)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{"status": "logged out (token already expired)"})
 		return
 	}
-
 	if err := h.Repository.AddTokenToBlacklist(context.Background(), tokenString, ttl); err != nil {
 		h.errorHandler(c, err)
 		return
 	}
-
 	c.JSON(http.StatusOK, gin.H{"status": "logged out"})
 }
 
@@ -107,7 +98,7 @@ func (h *Handler) DeauthorizeUser(c *gin.Context) {
 // @Tags         User
 // @Produce      json
 // @Success      200  {object} api_types.UserResponse
-// @Failure      401  {object} gin.H "Unauthorized"
+// @Failure      401  {object} api_types.ErrorResponse "Unauthorized"
 // @Security     BearerAuth
 // @Router       /users/me [get]
 func (h *Handler) GetUserMe(c *gin.Context) {
@@ -132,8 +123,8 @@ func (h *Handler) GetUserMe(c *gin.Context) {
 // @Produce      json
 // @Param        user body api_types.UserUpdateRequest true "Fields to update"
 // @Success      200  {object} api_types.UserResponse
-// @Failure      400  {object} gin.H "Invalid input"
-// @Failure      401  {object} gin.H "Unauthorized"
+// @Failure      400  {object} api_types.ErrorResponse "Invalid input"
+// @Failure      401  {object} api_types.ErrorResponse "Unauthorized"
 // @Security     BearerAuth
 // @Router       /users/me [put]
 func (h *Handler) UpdateUserMe(c *gin.Context) {
@@ -142,25 +133,19 @@ func (h *Handler) UpdateUserMe(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		return
 	}
-
 	var req api_types.UserUpdateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input: " + err.Error()})
 		return
 	}
-
 	user, err := h.Repository.GetUserByID(userID)
 	if err != nil {
 		h.errorHandler(c, err)
 		return
 	}
-
-	// Обновляем только те поля, которые переданы
 	if req.Password != "" {
-		// В ЛР4 не требуется смена логина, только пароля. Если нужно, можно добавить.
-		user.Password = req.Password // В репозитории пароль будет захеширован
+		user.Password = req.Password
 	}
-
 	if err := h.Repository.UpdateUser(&user); err != nil {
 		h.errorHandler(c, err)
 		return

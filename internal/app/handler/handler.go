@@ -70,6 +70,12 @@ func (h *Handler) RegisterRoutes(router *gin.Engine) {
 			// Завершение заявки
 			moderator.POST("/workshop_applications/:id/complete", h.CompleteWorkshopApplication)
 		}
+		internal := api.Group("/internal")
+		// Мы создадим это middleware в следующем шаге
+		internal.Use(h.InternalAuthMiddleware())
+		{
+			internal.POST("/update-prediction", h.UpdatePredictionResult)
+		}
 	}
 
 	router.NoRoute(func(c *gin.Context) {

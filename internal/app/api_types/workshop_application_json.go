@@ -27,9 +27,10 @@ type CartInfoResponse struct {
 
 // ProductionItemResponse описывает одну мастерскую внутри ответа по заявке
 type ProductionItemResponse struct {
-	Workshop        WorkshopResponse `json:"workshop"`
-	FoundDefects    int              `json:"found_defects"`
-	PredictedOutput *string          `json:"predicted_output,omitempty"`
+	Workshop          WorkshopResponse `json:"workshop"`
+	FoundDefects      int              `json:"found_defects"`
+	PredictedOutput   *string          `json:"predicted_output,omitempty"`
+	CalculationStatus string           `json:"calculation_status,omitempty"`
 }
 
 // ApplicationResponse описывает краткий JSON для одной заявки (для списков)
@@ -120,8 +121,9 @@ func ConvertApplicationToDetailedResponse(app ds.WorkshopApplication, items []ds
 				ImageKey:      imageKey,
 				ExtraImageKey: extraImageKey,
 			},
-			FoundDefects:    item.FoundDefects,
-			PredictedOutput: predictedOutput,
+			FoundDefects:      item.FoundDefects,
+			PredictedOutput:   predictedOutput,
+			CalculationStatus: item.CalculationStatus.String,
 		}
 
 	}

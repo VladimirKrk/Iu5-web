@@ -12,6 +12,7 @@ type WorkshopProduction struct {
 	FoundDefects    int            `gorm:"not null;default:0"`
 	PredictedOutput sql.NullString `gorm:"type:varchar(255)"`
 
+	CalculationStatus sql.NullString `gorm:"type:varchar(50);default:'pending'"`
 	// Связи с моделями
 	Application WorkshopApplication `gorm:"foreignKey:ApplicationID"`
 	Workshop    Workshop            `gorm:"foreignKey:WorkshopID"`

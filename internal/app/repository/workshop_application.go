@@ -3,9 +3,13 @@ package repository
 import (
 	"Iu5-web/internal/app/api_types"
 	"Iu5-web/internal/app/ds"
+	"bytes"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
+	"os"
 	"time"
 
 	"gorm.io/gorm"
@@ -125,38 +129,74 @@ func (r *Repository) FormApplication(appID, userID uint) (ds.WorkshopApplication
 
 func (r *Repository) CompleteApplication(appID, moderatorID uint) (ds.WorkshopApplication, error) {
 	var app ds.WorkshopApplication
-	err := r.db.First(&app, appID).Error
-	if err != nil {
-		return ds.WorkshopApplication{}, fmt.Errorf("%w: application not found", ErrNotFound)
+	if err := r.db.First(&app, appID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return ds.WorkshopApplication{}, fmt.Errorf("%w: application with id %d not found", ErrNotFound, appID)
+		}
+		return ds.WorkshopApplication{}, err
 	}
+
 	if app.Status != "formed" {
 		return ds.WorkshopApplication{}, fmt.Errorf("%w: can only complete a 'formed' application", ErrNotAllowed)
 	}
+
 	var items []ds.WorkshopProduction
 	if err := r.db.Where("application_id = ?", appID).Find(&items).Error; err != nil {
 		return ds.WorkshopApplication{}, err
 	}
-	err = r.db.Transaction(func(tx *gorm.DB) error {
-		for _, item := range items {
-			predictedOutput := ds.CalculateProductionOutput(item.FoundDefects)
-			err := tx.Model(&ds.WorkshopProduction{}).
-				Where("application_id = ? AND workshop_id = ?", item.ApplicationID, item.WorkshopID).
-				Update("predicted_output", predictedOutput).Error
-			if err != nil {
-				return err
-			}
-		}
+
+	asyncServiceURL := os.Getenv("ASYNC_SERVICE_URL")
+
+	err := r.db.Transaction(func(tx *gorm.DB) error {
+		// 1. Обновляем статус самой заявки
 		app.Status = "completed"
 		app.ModeratorID = sql.NullInt64{Int64: int64(moderatorID), Valid: true}
 		app.CompletedAt = sql.NullTime{Time: time.Now(), Valid: true}
 		if err := tx.Save(&app).Error; err != nil {
 			return err
 		}
+
+		// 2. Для каждой позиции в заявке вызываем асинхронный сервис
+		for _, item := range items {
+
+			// Устанавливаем статус расчета 'pending'
+			if err := tx.Model(&item).Update("calculation_status", "pending").Error; err != nil {
+				fmt.Printf("Failed to update calculation status for item %d: %v\n", item.WorkshopID, err)
+				// Не возвращаем ошибку, чтобы транзакция не отменилась
+			}
+
+			requestBody, err := json.Marshal(map[string]interface{}{
+				"application_id": item.ApplicationID,
+				"workshop_id":    item.WorkshopID,
+				"found_defects":  item.FoundDefects,
+			})
+			if err != nil {
+				fmt.Printf("Error marshaling json for item %d: %v\n", item.WorkshopID, err)
+				continue
+			}
+
+			// Запускаем HTTP-запрос асинхронно
+			go func(payload []byte, wID uint) {
+				resp, err := http.Post(asyncServiceURL, "application/json", bytes.NewBuffer(payload))
+				if err != nil {
+					fmt.Printf("Error calling async service for item %d: %v\n", wID, err)
+					// Можно добавить логику для отметки расчета как 'failed' в БД
+					return
+				}
+				defer resp.Body.Close()
+
+				if resp.StatusCode != http.StatusAccepted {
+					fmt.Printf("Async service returned non-202 status for item %d: %s\n", wID, resp.Status)
+				}
+			}(requestBody, item.WorkshopID)
+		}
 		return nil
 	})
+
 	if err != nil {
 		return ds.WorkshopApplication{}, fmt.Errorf("failed to complete application: %w", err)
 	}
+
 	return app, nil
 }
 

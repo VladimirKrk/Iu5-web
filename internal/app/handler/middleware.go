@@ -18,6 +18,7 @@ const (
 	userCtx             = "user_id"
 	roleCtx             = "is_moderator"
 )
+const INTERNAL_API_KEY = "Land_Cruiser_70_series_is_one_of_the_best_looking_cars_ever_lab8"
 
 // AuthMiddleware проверяет JWT-токен и права доступа
 func (h *Handler) AuthMiddleware(isModeratorOnly bool) gin.HandlerFunc {
@@ -80,6 +81,33 @@ func (h *Handler) AuthMiddleware(isModeratorOnly bool) gin.HandlerFunc {
 
 		c.Set(userCtx, userID)
 		c.Set(roleCtx, isModerator)
+		c.Next()
+	}
+}
+
+// internal Auth for псевдо-авторизации
+func (h *Handler) InternalAuthMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		//expectedApiKey := "Land_Cruiser_70_series_is_one_of_the_best_looking_cars_ever_lab8"
+		expectedApiKey := INTERNAL_API_KEY
+		apiKey := c.GetHeader("X-Internal-API-Key")
+
+		// --- V-- ДОБАВЛЯЕМ ЛОГИ ДЛЯ ОТЛАДКИ --V ---
+		fmt.Println("--- Internal Auth Middleware ---")
+		fmt.Printf("Expected API Key from .env: '%s'\n", expectedApiKey)
+		fmt.Printf("Received API Key from header: '%s'\n", apiKey)
+		fmt.Println("-------------------------------")
+		// --- ^-- КОНЕЦ БЛОКА --^ ---
+
+		if expectedApiKey == "" {
+			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "Internal API key not configured on server"})
+			return
+		}
+
+		if apiKey != expectedApiKey {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid internal API key"})
+			return
+		}
 		c.Next()
 	}
 }

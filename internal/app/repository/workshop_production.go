@@ -9,6 +9,12 @@ import (
 	"gorm.io/gorm"
 )
 
+type UpdatePredictionRequest struct {
+	ApplicationID   uint   `json:"application_id"`
+	WorkshopID      uint   `json:"workshop_id"`
+	PredictedOutput string `json:"predicted_output"`
+}
+
 func (r *Repository) checkDraftAccess(applicationID, userID uint) error {
 	var application ds.WorkshopApplication
 	err := r.db.Where("id = ?", applicationID).First(&application).Error
@@ -84,4 +90,21 @@ func (r *Repository) UpdateProductionItem(applicationID, workshopID, userID uint
 		return ds.WorkshopProduction{}, err
 	}
 	return item, nil
+}
+
+func (r *Repository) UpdatePrediction(appID, workshopID uint, result string) error {
+	tx := r.db.Model(&ds.WorkshopProduction{}).
+		Where("application_id = ? AND workshop_id = ?", appID, workshopID).
+		Updates(map[string]interface{}{
+			"predicted_output":   result,
+			"calculation_status": "completed",
+		})
+
+	if tx.Error != nil {
+		return tx.Error
+	}
+	if tx.RowsAffected == 0 {
+		return ErrNotFound
+	}
+	return nil
 }

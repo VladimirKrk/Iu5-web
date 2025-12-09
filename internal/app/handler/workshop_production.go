@@ -144,5 +144,5 @@ func (h *Handler) RejectWorkshopApplication(c *gin.Context) {
 
 	// Получаем количество элементов для корректного ответа
 	count, _ := h.Repository.GetApplicationItemsCount(app.ID)
-	c.JSON(http.StatusOK, api_types.ConvertApplicationToResponse(app, count))
+	c.JSON(http.StatusOK, api_types.ConvertApplicationToResponse(app, count, 0))
 }

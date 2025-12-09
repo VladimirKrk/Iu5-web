@@ -238,3 +238,12 @@ func (r *Repository) RejectApplication(appID uint) (ds.WorkshopApplication, erro
 	}
 	return app, nil
 }
+
+func (r *Repository) GetCalculatedItemsCount(appID uint) (int64, error) {
+	var count int64
+	// Считаем только те записи, где статус 'completed'
+	err := r.db.Model(&ds.WorkshopProduction{}).
+		Where("application_id = ? AND calculation_status = ?", appID, "completed").
+		Count(&count).Error
+	return count, err
+}

@@ -35,14 +35,15 @@ type ProductionItemResponse struct {
 
 // ApplicationResponse описывает краткий JSON для одной заявки (для списков)
 type ApplicationResponse struct {
-	ID          uint          `json:"id"`
-	Status      string        `json:"status"`
-	CreatedAt   time.Time     `json:"created_at"`
-	FormedAt    *time.Time    `json:"formed_at,omitempty"`
-	CompletedAt *time.Time    `json:"completed_at,omitempty"`
-	Creator     UserResponse  `json:"creator"`
-	Moderator   *UserResponse `json:"moderator,omitempty"`
-	ItemsCount  int64         `json:"items_count"` // Добавим кол-во позиций
+	ID                   uint          `json:"id"`
+	Status               string        `json:"status"`
+	CreatedAt            time.Time     `json:"created_at"`
+	FormedAt             *time.Time    `json:"formed_at,omitempty"`
+	CompletedAt          *time.Time    `json:"completed_at,omitempty"`
+	Creator              UserResponse  `json:"creator"`
+	Moderator            *UserResponse `json:"moderator,omitempty"`
+	ItemsCount           int64         `json:"items_count"`            // Добавим кол-во позиций
+	CalculatedItemsCount int64         `json:"calculated_items_count"` // answers_count
 }
 
 // ApplicationDetailedResponse описывает полный JSON для одной заявки (для GET by ID)
@@ -60,7 +61,7 @@ type ApplicationDetailedResponse struct {
 
 // --- Функции-конвертеры ---
 
-func ConvertApplicationToResponse(app ds.WorkshopApplication, itemsCount int64) ApplicationResponse {
+func ConvertApplicationToResponse(app ds.WorkshopApplication, itemsCount int64, calculatedItemsCount int64) ApplicationResponse {
 	var formedAt, completedAt *time.Time
 	if app.FormedAt.Valid {
 		formedAt = &app.FormedAt.Time
@@ -75,19 +76,20 @@ func ConvertApplicationToResponse(app ds.WorkshopApplication, itemsCount int64) 
 	}
 
 	return ApplicationResponse{
-		ID:          app.ID,
-		Status:      app.Status,
-		CreatedAt:   app.CreatedAt,
-		FormedAt:    formedAt,
-		CompletedAt: completedAt,
-		Creator:     ConvertUserToResponse(app.Creator),
-		Moderator:   moderator,
-		ItemsCount:  itemsCount,
+		ID:                   app.ID,
+		Status:               app.Status,
+		CreatedAt:            app.CreatedAt,
+		FormedAt:             formedAt,
+		CompletedAt:          completedAt,
+		Creator:              ConvertUserToResponse(app.Creator),
+		Moderator:            moderator,
+		ItemsCount:           itemsCount,
+		CalculatedItemsCount: calculatedItemsCount,
 	}
 }
 
 func ConvertApplicationToDetailedResponse(app ds.WorkshopApplication, items []ds.WorkshopProduction) ApplicationDetailedResponse {
-	baseResponse := ConvertApplicationToResponse(app, int64(len(items)))
+	baseResponse := ConvertApplicationToResponse(app, int64(len(items)), 0)
 
 	var productionName *string
 	if app.ProductionName.Valid {

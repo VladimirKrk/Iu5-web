@@ -79,14 +79,23 @@ func (h *Handler) GetWorkshopApplications(c *gin.Context) {
 		h.errorHandler(c, err)
 		return
 	}
+
 	responses := make([]api_types.ApplicationResponse, len(apps))
 	for i, app := range apps {
-		count, err := h.Repository.GetApplicationItemsCount(app.ID)
+		itemsCount, err := h.Repository.GetApplicationItemsCount(app.ID)
 		if err != nil {
 			h.errorHandler(c, err)
 			return
 		}
-		responses[i] = api_types.ConvertApplicationToResponse(app, count)
+
+		// V-- ВЫЗЫВАЕМ НОВЫЙ МЕТОД ДЛЯ ПОДСЧЕТА ПРОГРЕССА --V
+		calculatedCount, err := h.Repository.GetCalculatedItemsCount(app.ID)
+		if err != nil {
+			h.errorHandler(c, err)
+			return
+		}
+
+		responses[i] = api_types.ConvertApplicationToResponse(app, itemsCount, calculatedCount)
 	}
 	c.JSON(http.StatusOK, responses)
 }

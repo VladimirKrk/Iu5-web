@@ -116,3 +116,33 @@ func (h *Handler) DeleteProductionItem(c *gin.Context) {
 	}
 	c.Status(http.StatusNoContent)
 }
+
+// RejectWorkshopApplication godoc
+// @Summary      Reject a formed application (Moderator only)
+// @Description  Changes the status of a formed application to 'rejected'. Requires moderator rights.
+// @Tags         Applications
+// @Produce      json
+// @Param        id   path      int  true  "Application ID"
+// @Success      200  {object}  api_types.ApplicationResponse
+// @Failure      401  {object}  api_types.ErrorResponse "Unauthorized"
+// @Failure      403  {object}  api_types.ErrorResponse "Forbidden (not moderator or not a 'formed' application)"
+// @Failure      404  {object}  api_types.ErrorResponse "Not Found"
+// @Security     BearerAuth
+// @Router       /workshop_applications/{id}/reject [post]
+func (h *Handler) RejectWorkshopApplication(c *gin.Context) {
+	appID, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID format"})
+		return
+	}
+
+	app, err := h.Repository.RejectApplication(uint(appID))
+	if err != nil {
+		h.errorHandler(c, err)
+		return
+	}
+
+	// Получаем количество элементов для корректного ответа
+	count, _ := h.Repository.GetApplicationItemsCount(app.ID)
+	c.JSON(http.StatusOK, api_types.ConvertApplicationToResponse(app, count))
+}

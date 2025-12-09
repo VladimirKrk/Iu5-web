@@ -214,3 +214,27 @@ func (r *Repository) DeleteWorkshopApplication(appID, userID uint) error {
 	}
 	return nil
 }
+
+func (r *Repository) RejectApplication(appID uint) (ds.WorkshopApplication, error) {
+	var app ds.WorkshopApplication
+	if err := r.db.First(&app, appID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return ds.WorkshopApplication{}, fmt.Errorf("%w: application with id %d not found", ErrNotFound, appID)
+		}
+		return ds.WorkshopApplication{}, err
+	}
+
+	if app.Status != "formed" {
+		return ds.WorkshopApplication{}, fmt.Errorf("%w: can only reject a 'formed' application", ErrNotAllowed)
+	}
+
+	app.Status = "rejected"
+	// Мы решили не добавлять причину, так что просто меняем статус
+	// и ставим время обработки
+	app.CompletedAt = sql.NullTime{Time: time.Now(), Valid: true}
+
+	if err := r.db.Save(&app).Error; err != nil {
+		return ds.WorkshopApplication{}, err
+	}
+	return app, nil
+}
